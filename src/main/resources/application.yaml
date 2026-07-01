@@ -1,0 +1,15 @@
+spring:
+  application:
+    name: job_portal
+  datasource:
+    url: jdbc:postgresql://localhost:5432/jobportal_db
+    driver-class-name: org.postgresql.Driver
+    username: postgres
+    password: 123
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+jwt:
+  secret: your-super-long-random-secret-key-min-32-characters-long
+  expiration: 86400000
