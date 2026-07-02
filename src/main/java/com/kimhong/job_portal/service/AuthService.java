@@ -9,8 +9,10 @@ import com.kimhong.job_portal.util.JwtUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+
 
 
 @Service
@@ -20,6 +22,7 @@ public class AuthService {
     private final JwtUtil jwtUtil;
     private final PasswordEncoder passwordEncoder;
     private final AuthenticationManager authenticationManager;
+    private final UserDetailsService userDetailsService;
 
     public AuthResponse register(RegisterRequest request){
         if(userRepository.existsByEmail(request.getEmail())){
@@ -40,16 +43,18 @@ public class AuthService {
 
     public AuthResponse login(LoginRequest request){
         authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword())
+                new UsernamePasswordAuthenticationToken(
+                        request.getEmail(),
+                        request.getPassword())
         );
 
-        return userRepository.findByEmail(request.getEmail())
-                .map(user -> new AuthResponse(
-                        jwtUtil.generateToken(user.getEmail(),user.getRole().name()),
-                        user.getEmail(),
-                        user.getRole()
-                ))
-                .orElseThrow(() -> new RuntimeException("Email or Password invalid"));
+        User user = userRepository.findByEmail(request.getEmail())
+                .orElseThrow(() -> new RuntimeException("User not found!"));
+
+        String token = jwtUtil.generateToken(user.getEmail(),user.getRole().name());
+
+        return new AuthResponse(token, user.getEmail(), user.getRole());
+
     }
 
 }
