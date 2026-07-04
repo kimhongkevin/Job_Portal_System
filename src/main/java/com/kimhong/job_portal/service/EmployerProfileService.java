@@ -4,8 +4,9 @@ import com.kimhong.job_portal.dto.EmployerProfileRequest;
 import com.kimhong.job_portal.dto.EmployerProfileResponse;
 import com.kimhong.job_portal.entity.EmployerProfile;
 import com.kimhong.job_portal.entity.User;
+import com.kimhong.job_portal.exception.DuplicateResourceException;
+import com.kimhong.job_portal.exception.ResourceNotFoundException;
 import com.kimhong.job_portal.repository.EmployerProfileRepository;
-import com.kimhong.job_portal.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -13,50 +14,15 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class EmployerProfileService {
     private final EmployerProfileRepository employerProfileRepository;
-    private final UserRepository userRepository;
+    private final UserService userService;
 
     public EmployerProfileResponse createProfile(EmployerProfileRequest request,String email){
-        User user = getUserByEmail(email);
+        User user = userService.getUserByEmail(email);
 
         if(employerProfileRepository.existsByUser(user))
-            throw new RuntimeException("Profile already exists!");
+            throw new DuplicateResourceException("Profile already exists!");
 
-        EmployerProfile profile = mapToEmployer(request,user);
-        EmployerProfile savedProfile = employerProfileRepository.save(profile);
-
-        return mapToEmployerResponse(savedProfile);
-    }
-
-    public EmployerProfileResponse getMyProfile(String email){
-        User user = getUserByEmail(email);
-
-        return employerProfileRepository.findByUser(user)
-                .map(this::mapToEmployerResponse)
-                .orElseThrow(()->new RuntimeException("Employer profile not found."));
-    }
-
-    public EmployerProfileResponse updateProfile(EmployerProfileRequest request, String email){
-        User user = getUserByEmail(email);
-        EmployerProfile profile = employerProfileRepository.findByUser(user)
-                .orElseThrow(()->new RuntimeException("Employer profile not found."));
-        profile.setCompanyName(request.getCompanyName());
-        profile.setCompanyDescription(request.getCompanyDescription());
-        profile.setWebsite(request.getWebsite());
-        profile.setLocation(request.getLocation());
-
-        EmployerProfile updatedProfile = employerProfileRepository.save(profile);
-
-        return mapToEmployerResponse(updatedProfile);
-    }
-
-
-    private User getUserByEmail(String email) throws RuntimeException{
-        return userRepository.findByEmail(email).orElseThrow(()-> new RuntimeException("User not found"));
-    }
-
-    private EmployerProfile mapToEmployer(EmployerProfileRequest request, User user){
-        return EmployerProfile.builder()
-                .id(user.getId())
+        EmployerProfile profile = EmployerProfile.builder()
                 .companyName(request.getCompanyName())
                 .companyDescription(request.getCompanyDescription())
                 .website(request.getWebsite())
@@ -64,17 +30,45 @@ public class EmployerProfileService {
                 .user(user)
                 .build();
 
+        return mapToEmployerResponse(employerProfileRepository.save(profile));
     }
 
-    private EmployerProfileResponse mapToEmployerResponse(EmployerProfile employer){
+    public EmployerProfileResponse getMyProfile(String email){
+        User user = userService.getUserByEmail(email);
+
+        return employerProfileRepository.findByUser(user)
+                .map(this::mapToEmployerResponse)
+                .orElseThrow(()->new ResourceNotFoundException("Employer profile not found."));
+    }
+
+    public EmployerProfileResponse updateProfile(EmployerProfileRequest request, String email){
+        User user = userService.getUserByEmail(email);
+        EmployerProfile profile = employerProfileRepository.findByUser(user)
+                .orElseThrow(()->new ResourceNotFoundException("Employer profile not found."));
+        if(request.getCompanyName() != null && !request.getCompanyName().isBlank())
+            profile.setCompanyName(request.getCompanyName());
+
+        if(request.getCompanyDescription() != null && !request.getCompanyDescription().isBlank())
+            profile.setCompanyDescription(request.getCompanyDescription());
+
+        if(request.getWebsite() != null && !request.getWebsite().isBlank())
+            profile.setWebsite(request.getWebsite());
+
+        if(request.getLocation() != null && !request.getLocation().isBlank())
+            profile.setLocation(request.getLocation());
+
+        return mapToEmployerResponse(employerProfileRepository.save(profile));
+    }
+
+    private EmployerProfileResponse mapToEmployerResponse(EmployerProfile profile){
         return  new EmployerProfileResponse(
-                employer.getId(),
-                employer.getCompanyName(),
-                employer.getCompanyDescription(),
-                employer.getWebsite(),
-                employer.getLocation(),
-                employer.getUser().getEmail(),
-                employer.getCreatedAt()
+                profile.getId(),
+                profile.getCompanyName(),
+                profile.getCompanyDescription(),
+                profile.getWebsite(),
+                profile.getLocation(),
+                profile.getUser().getEmail(),
+                profile.getCreatedAt()
         );
     }
 

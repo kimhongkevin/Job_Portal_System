@@ -20,7 +20,7 @@ public class JobPostingResponse {
     private JobType jobType;
     private BigDecimal salary;
     private JobStatus jobStatus;
-    private String companyName;
     private Long employerId;
+    private String companyName;
     private LocalDateTime createdAt;
 }
