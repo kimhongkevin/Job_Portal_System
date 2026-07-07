@@ -9,12 +9,30 @@ import com.kimhong.job_portal.exception.ResourceNotFoundException;
 import com.kimhong.job_portal.repository.SeekerProfileRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.io.IOException;
 
 @Service
 @RequiredArgsConstructor
 public class SeekerProfileService {
     private final SeekerProfileRepository seekerProfileRepository;
     private final UserService userService;
+    private final FileStorageService fileStorageService;
+
+    private SeekerProfileResponse mapToSeekerProfileResponse(SeekerProfile profile){
+        return new SeekerProfileResponse(
+                profile.getId(),
+                profile.getBio(),
+                profile.getSkills(),
+                profile.getExperience(),
+                profile.getEducation(),
+                profile.getLocation(),
+                profile.getUser().getEmail(),
+                profile.getResumeUrl(),
+                profile.getCreatedAt()
+        );
+    }
 
     public SeekerProfileResponse createProfile(SeekerProfileRequest request, String email){
         User user = userService.getUserByEmail(email);
@@ -62,23 +80,24 @@ public class SeekerProfileService {
             profile.setExperience(request.getExperience());
 
         return mapToSeekerProfileResponse(seekerProfileRepository.save(profile));
+    }
 
+    public SeekerProfileResponse uploadResume(MultipartFile file,String email){
+        User user = userService.getUserByEmail(email);
+        SeekerProfile profile = seekerProfileRepository.findByUser(user)
+                .orElseThrow(()-> new ResourceNotFoundException("Please create profile first"));
 
+        if(profile.getResumeUrl() != null && !profile.getResumeUrl().isBlank())
+            fileStorageService.deleteFile(profile.getResumeUrl());
+
+        String fileUrl = fileStorageService.storeFile(file);
+
+        profile.setResumeUrl(fileUrl);
+
+        return mapToSeekerProfileResponse(seekerProfileRepository.save(profile));
     }
 
 
-    private SeekerProfileResponse mapToSeekerProfileResponse(SeekerProfile profile){
-        return new SeekerProfileResponse(
-                profile.getId(),
-                profile.getBio(),
-                profile.getSkills(),
-                profile.getExperience(),
-                profile.getEducation(),
-                profile.getLocation(),
-                profile.getUser().getEmail(),
-                profile.getResumeUrl(),
-                profile.getCreatedAt()
-        );
-    }
+
 
 }

@@ -1,6 +1,9 @@
 package com.kimhong.job_portal.dto;
 
 import com.kimhong.job_portal.entity.ApplicationStatus;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -9,5 +12,6 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class UpdateApplicationStatusRequest {
-    private ApplicationStatus status; // This is only thing employer can change
+    @NotNull(message = "Status is required")
+    private ApplicationStatus status; // PENDING,REVIEWED,ACCEPTED,REJECTED
 }

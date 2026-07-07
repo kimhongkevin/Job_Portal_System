@@ -1,5 +1,6 @@
 package com.kimhong.job_portal.dto;
 
+import jakarta.validation.constraints.NotBlank;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -9,8 +10,10 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class EmployerProfileRequest {
 
+    @NotBlank(message = "Company Name is required")
     private String companyName;
-    private String companyDescription;
-    private String website;
-    private String location;
+
+    private String companyDescription; //optional
+    private String website; //optional
+    private String location; //optional
 }

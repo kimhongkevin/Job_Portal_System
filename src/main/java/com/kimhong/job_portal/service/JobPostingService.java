@@ -2,17 +2,15 @@ package com.kimhong.job_portal.service;
 
 import com.kimhong.job_portal.dto.JobPostingRequest;
 import com.kimhong.job_portal.dto.JobPostingResponse;
-import com.kimhong.job_portal.entity.EmployerProfile;
-import com.kimhong.job_portal.entity.JobPosting;
-import com.kimhong.job_portal.entity.JobStatus;
-import com.kimhong.job_portal.entity.User;
+import com.kimhong.job_portal.dto.PageResponse;
+import com.kimhong.job_portal.entity.*;
 import com.kimhong.job_portal.exception.ResourceNotFoundException;
 import com.kimhong.job_portal.exception.UnauthorizedException;
 import com.kimhong.job_portal.repository.EmployerProfileRepository;
 import com.kimhong.job_portal.repository.JobPostingRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
-
 import java.util.List;
 
 @Service
@@ -98,6 +96,7 @@ public class JobPostingService {
         jobPostingRepository.delete(job);
     }
 
+    /* Without Pagination
     public List<JobPostingResponse> getAllOpenJobs(){
         return jobPostingRepository.findByJobStatus(JobStatus.OPEN).stream()
                 .map(this::mapToJobPostingResponse).toList();
@@ -107,6 +106,30 @@ public class JobPostingService {
         return jobPostingRepository.findByTitleContainingIgnoreCase(keyword).stream()
                 .map(this::mapToJobPostingResponse).toList();
     }
+
+     */
+
+    // With Pagination
+
+    public PageResponse<JobPostingResponse> getAllOpenJobsPaginated(Pageable pageable){
+
+        return PageResponse.of(
+                jobPostingRepository.findByJobStatus(JobStatus.OPEN,pageable)
+                        .map(this::mapToJobPostingResponse)
+        );
+    }
+
+    public PageResponse<JobPostingResponse> searchJobs(
+            String keyword,
+            String location,
+            JobType jobType,
+            Pageable pageable){
+
+        return PageResponse.of(jobPostingRepository.searchJobs(keyword, location, jobType, pageable)
+                .map(this::mapToJobPostingResponse));
+    }
+
+
 
     public JobPostingResponse closeJob(Long id,String email){
         JobPosting job = jobPostingRepository.findById(id).orElseThrow(()-> new ResourceNotFoundException("Job not found."));

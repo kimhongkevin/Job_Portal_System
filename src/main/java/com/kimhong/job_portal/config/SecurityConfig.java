@@ -43,9 +43,14 @@ public class SecurityConfig {
         http.authorizeHttpRequests(
                 auth ->
                         auth.requestMatchers("/api/auth/**").permitAll()
-                                .requestMatchers("/api/jobs/open").permitAll()
-                                .requestMatchers("/api/jobs/search").permitAll()
+                                .requestMatchers("/api/jobs/open/**").permitAll()
+                                .requestMatchers("/api/jobs/search/**").permitAll()
                                 .requestMatchers(HttpMethod.GET, "/api/jobs/{id}").permitAll()
+                                .requestMatchers(
+                                        "/swagger-ui/**",
+                                        "/swagger-ui.html",
+                                        "/v3/api-docs/**",
+                                        "/v3/api-docs").permitAll()
                                 .anyRequest().authenticated());
 
         http.addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
