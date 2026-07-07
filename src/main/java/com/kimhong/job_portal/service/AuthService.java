@@ -24,7 +24,6 @@ public class AuthService {
     private final JwtUtil jwtUtil;
     private final PasswordEncoder passwordEncoder;
     private final AuthenticationManager authenticationManager;
-    private final UserDetailsService userDetailsService;
 
     public AuthResponse register(RegisterRequest request){
         if(userRepository.existsByEmail(request.getEmail())){

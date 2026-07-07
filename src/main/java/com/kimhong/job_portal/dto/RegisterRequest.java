@@ -10,6 +10,8 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 @Data
+@NoArgsConstructor
+@AllArgsConstructor
 public class RegisterRequest {
     @NotBlank(message = "Full name is required")
     private String fullName;
