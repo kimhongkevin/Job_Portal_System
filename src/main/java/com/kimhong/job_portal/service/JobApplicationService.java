@@ -24,6 +24,20 @@ public class JobApplicationService {
     private final JobPostingRepository jobPostingRepository;
     private final UserService userService;
 
+    private JobApplicationResponse mapToJobApplicationResponse(JobApplication application){
+        return new JobApplicationResponse(
+                application.getId(),
+                application.getJob().getId(),
+                application.getJob().getTitle(),
+                application.getJob().getEmployer().getCompanyName(),
+                application.getSeeker().getId(),
+                application.getSeeker().getUser().getEmail(),
+                application.getStatus(),
+                application.getCoverLetter(),
+                application.getAppliedAt()
+        );
+    }
+
     public JobApplicationResponse applyToJob(JobApplicationRequest request,String email){
         User user = userService.getUserByEmail(email);
         SeekerProfile profile = seekerProfileRepository.findByUser(user)
@@ -108,20 +122,5 @@ public class JobApplicationService {
 
         return jobApplicationRepository.findByJobAndStatus(job,status).stream()
                 .map(this::mapToJobApplicationResponse).toList();
-    }
-
-
-    private JobApplicationResponse mapToJobApplicationResponse(JobApplication application){
-        return new JobApplicationResponse(
-             application.getId(),
-             application.getJob().getId(),
-             application.getJob().getTitle(),
-             application.getJob().getEmployer().getCompanyName(),
-             application.getSeeker().getId(),
-             application.getSeeker().getUser().getEmail(),
-             application.getStatus(),
-             application.getCoverLetter(),
-             application.getAppliedAt()
-        );
     }
 }

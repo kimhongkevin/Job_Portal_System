@@ -96,21 +96,6 @@ public class JobPostingService {
         jobPostingRepository.delete(job);
     }
 
-    /* Without Pagination
-    public List<JobPostingResponse> getAllOpenJobs(){
-        return jobPostingRepository.findByJobStatus(JobStatus.OPEN).stream()
-                .map(this::mapToJobPostingResponse).toList();
-    }
-
-    public List<JobPostingResponse> searchByTitle(String keyword){
-        return jobPostingRepository.findByTitleContainingIgnoreCase(keyword).stream()
-                .map(this::mapToJobPostingResponse).toList();
-    }
-
-     */
-
-    // With Pagination
-
     public PageResponse<JobPostingResponse> getAllOpenJobsPaginated(Pageable pageable){
 
         return PageResponse.of(
@@ -129,8 +114,6 @@ public class JobPostingService {
                 .map(this::mapToJobPostingResponse));
     }
 
-
-
     public JobPostingResponse closeJob(Long id,String email){
         JobPosting job = jobPostingRepository.findById(id).orElseThrow(()-> new ResourceNotFoundException("Job not found."));
         if(!job.getEmployer().getUser().getEmail().equals(email))
@@ -140,10 +123,5 @@ public class JobPostingService {
 
         return mapToJobPostingResponse(jobPostingRepository.save(job));
     }
-
-
-
-
-
 
 }
