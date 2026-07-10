@@ -142,7 +142,7 @@ Run unit tests
 
 ### ER Diagram
 
-![ER Diagram](assets/er-diagram.png)
+![ER Diagram](assets/er-diagram-1.png)
 
 ### Postman Test
 
