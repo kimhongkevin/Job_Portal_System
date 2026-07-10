@@ -136,11 +136,17 @@ Run unit tests
 
 ## 📸 Screenshots
 
-> Add screenshots of:
-- Swagger UI
-- Database ER Diagram
-- Postman Collection
-- (Later) React Frontend
+### Swagger UI
+
+![Swagger UI](assets/swagger-ui.png)
+
+### ER Diagram
+
+![ER Diagram](assets/er-diagram.png)
+
+### Postman Test
+
+![Postman](assets/postman-tests.png)
 
 ---
 
