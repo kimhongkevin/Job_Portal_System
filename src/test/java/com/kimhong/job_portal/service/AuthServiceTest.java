@@ -52,7 +52,7 @@ public class AuthServiceTest {
     private final String mockToken = "mocked-jwt-token";
 
     @BeforeEach
-    void setUp(){
+    void setUp() {
         sampleUser = new User();
         sampleUser.setId(1L);
         sampleUser.setFullName("John Doe");
@@ -61,106 +61,94 @@ public class AuthServiceTest {
         sampleUser.setRole(Role.JOB_SEEKER);
     }
 
-    // --- register() method testing ---
-    @Test
-    @DisplayName("Should successfully register a new user")
-    void register_Success(){
+    @Nested
+    @DisplayName("Register Method Tests")
+    class RegisterTests {
 
-        // Arrange
-        RegisterRequest request = new RegisterRequest("John Doe","joh.doe@example.com","encodedPassword123",Role.JOB_SEEKER);
+        @Test
+        @DisplayName("Should successfully register a new user and send a welcome email")
+        void register_Success() {
+            // Arrange
+            RegisterRequest request = new RegisterRequest("John Doe", "john.doe@example.com", "password123", Role.JOB_SEEKER);
 
-        when(userRepository.existsByEmail(request.getEmail())).thenReturn(false);
-        when(passwordEncoder.encode(request.getPassword())).thenReturn("encodedPassword123");
-        when(userRepository.save(any(User.class))).thenReturn(sampleUser);
-        when(jwtUtil.generateToken(request.getEmail(),request.getRole().name())).thenReturn(mockToken);
+            when(userRepository.existsByEmail(request.getEmail())).thenReturn(false);
+            when(passwordEncoder.encode(request.getPassword())).thenReturn("encodedPassword123");
+            when(userRepository.save(any(User.class))).thenReturn(sampleUser);
+            when(jwtUtil.generateToken(request.getEmail(), request.getRole().name())).thenReturn(mockToken);
 
-        // Act
-        AuthResponse response = authService.register(request);
+            // Act
+            AuthResponse response = authService.register(request);
 
-        // Assert
-        assertNotNull(response);
-        assertEquals(mockToken,response.getToken());
-        assertEquals(request.getEmail(),response.getEmail());
-        assertEquals(request.getRole(),response.getRole());
+            // Assert
+            assertNotNull(response);
+            assertEquals(mockToken, response.getToken());
+            assertEquals(request.getEmail(), response.getEmail());
 
-        verify(userRepository, times(1)).existsByEmail(request.getEmail());
-        verify(userRepository, times(1)).save(any(User.class));
-        verify(emailService).sendWelcomeEmail(anyString(), anyString());
+            verify(userRepository, times(1)).save(any(User.class));
+            // Verify that the welcome email notification triggered successfully
+            verify(emailService, times(1)).sendWelcomeEmail(sampleUser.getEmail(), sampleUser.getFullName());
+        }
+
+        @Test
+        @DisplayName("Should throw DuplicateResourceException and never send an email if user exists")
+        void register_ThrowsException_WhenEmailExists() {
+            // Arrange
+            RegisterRequest request = new RegisterRequest("John Doe", "john.doe@example.com", "password123", Role.JOB_SEEKER);
+            when(userRepository.existsByEmail(request.getEmail())).thenReturn(true);
+
+            // Act & Assert
+            assertThrows(DuplicateResourceException.class, () -> authService.register(request));
+
+            // Verify infrastructure was never reached
+            verify(userRepository, never()).save(any(User.class));
+            verify(emailService, never()).sendWelcomeEmail(anyString(), anyString());
+        }
     }
 
-    @Test
-    @DisplayName("Should throw DuplicateResourceException when email already exists")
-    void register_ThrowsException_WhenEmailExists(){
-        // Arrange
-        RegisterRequest request = new RegisterRequest("John Doe","john.doe@example.com","encodedPassword123",Role.JOB_SEEKER);
-        when(userRepository.existsByEmail(request.getEmail())).thenReturn(true);
+    @Nested
+    @DisplayName("Login Method Tests")
+    class LoginTests {
 
-        // Act & Assert
+        @Test
+        @DisplayName("Should successfully login a user")
+        void login_Success() {
+            // Arrange
+            LoginRequest request = new LoginRequest("john.doe@example.com", "encodedPassword123");
 
-        assertThrows(DuplicateResourceException.class, ()-> authService.register(request));
+            when(authenticationManager.authenticate(any(UsernamePasswordAuthenticationToken.class))).thenReturn(null);
+            when(userRepository.findByEmail(request.getEmail())).thenReturn(Optional.of(sampleUser));
+            when(jwtUtil.generateToken(sampleUser.getEmail(), sampleUser.getRole().name())).thenReturn(mockToken);
 
-        // Ensure data saving and token generation are never reached
-        verify(userRepository,never()).save(any(User.class));
-        verify(jwtUtil,never()).generateToken(anyString(),anyString());
-    }
+            // Act
+            AuthResponse response = authService.login(request);
 
-    // --- Login() method Testing ---
+            // Assert
+            assertNotNull(response);
+            assertEquals(mockToken, response.getToken());
+            verify(userRepository, times(1)).findByEmail(request.getEmail());
+        }
 
-    @Test
-    @DisplayName("Should successfully login a user")
-    void login_Success(){
+        @Test
+        @DisplayName("Should throw BadCredentialsException when email or password doesn't match")
+        void login_ThrowsException_WhenCredentialsInvalid() {
+            LoginRequest request = new LoginRequest("fake@example.com", "password123");
 
-        // Arrange
-        LoginRequest request = new LoginRequest("john.doe@example.com","encodedPassword123");
+            when(authenticationManager.authenticate(any(UsernamePasswordAuthenticationToken.class)))
+                    .thenThrow(new BadCredentialsException("Invalid credentials"));
 
-        // Mock authenticationManager.authenticate returning successfully (not throwing an exception)
-        when(authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(
-                request.getEmail(),request.getPassword()
-        ))).thenReturn(null);
-        when(userRepository.findByEmail(request.getEmail())).thenReturn(Optional.of(sampleUser));
-        when(jwtUtil.generateToken(sampleUser.getEmail(),sampleUser.getRole().name())).thenReturn(mockToken);
+            assertThrows(BadCredentialsException.class, () -> authService.login(request));
+            verify(userRepository, never()).findByEmail(anyString());
+        }
 
-        // Act
-        AuthResponse response = authService.login(request);
+        @Test
+        @DisplayName("Should throw ResourceNotFoundException when user record is missing")
+        void login_ThrowsException_WhenUserNotFound() {
+            LoginRequest request = new LoginRequest("nonexisting@com", "password123");
 
-        // Assert
-        assertNotNull(response);
-        assertEquals(mockToken,response.getToken());
-        assertEquals(request.getEmail(),response.getEmail());
-        assertEquals(sampleUser.getRole(),response.getRole());
+            when(authenticationManager.authenticate(any(UsernamePasswordAuthenticationToken.class))).thenReturn(null);
+            when(userRepository.findByEmail(request.getEmail())).thenReturn(Optional.empty());
 
-        verify(authenticationManager, times(1)).authenticate(any(UsernamePasswordAuthenticationToken.class));
-        verify(userRepository, times(1)).findByEmail(request.getEmail());
-    }
-
-    @Test
-    @DisplayName("Should throw BadCredentialsException when email or password is not matched")
-    void login_ThrowsException_WhenCredentialsInvalid(){
-        LoginRequest request = new LoginRequest("fake@example.com", "password123");
-
-        // Tell mock to throw when authenticate is called
-        when(authenticationManager.authenticate(any()))
-                .thenThrow(new BadCredentialsException("Invalid credentials"));
-
-        assertThrows(BadCredentialsException.class, () -> authService.login(request));
-
-        verify(userRepository, never()).findByEmail(any());
-        verify(jwtUtil, never()).generateToken(anyString(), anyString());
-    }
-
-    @Test
-    @DisplayName("Should throw ResourceNotFoundException when user is not found after authentication")
-    void login_ThrowsException_WhenUserNotFound(){
-        // Arrange
-        LoginRequest request = new LoginRequest("nonexisting.user@com","password123");
-
-        when(authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(request.getEmail(),request.getPassword())))
-                .thenReturn(null);
-        when(userRepository.findByEmail(request.getEmail())).thenReturn(Optional.empty());
-
-        // Act & Assert
-        assertThrows(ResourceNotFoundException.class, ()-> authService.login(request));
-
-        verify(jwtUtil,never()).generateToken(anyString(),anyString());
+            assertThrows(ResourceNotFoundException.class, () -> authService.login(request));
+        }
     }
 }

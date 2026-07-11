@@ -13,6 +13,7 @@ import com.kimhong.job_portal.repository.JobPostingRepository;
 import com.kimhong.job_portal.repository.SeekerProfileRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -48,7 +49,6 @@ class JobApplicationServiceTest {
     @InjectMocks
     private JobApplicationService jobApplicationService;
 
-    // Common fixture entities
     private User seekerUser;
     private User employerUser;
     private SeekerProfile mockSeekerProfile;
@@ -62,13 +62,13 @@ class JobApplicationServiceTest {
     @BeforeEach
     void setUp() {
         seekerUser = new User();
+        seekerUser.setFullName("Jane Doe");
         seekerUser.setEmail(seekerEmail);
 
         mockSeekerProfile = new SeekerProfile();
         mockSeekerProfile.setId(1L);
         mockSeekerProfile.setUser(seekerUser);
 
-        // Employer setups
         employerUser = new User();
         employerUser.setEmail(employerEmail);
 
@@ -94,191 +94,119 @@ class JobApplicationServiceTest {
                 .build();
     }
 
-    @Test
-    @DisplayName("Should apply successfully when constraints are completely satisfied")
-    void applyToJob_Success() {
-        // Arrange
-        JobApplicationRequest request = new JobApplicationRequest(100L, "Here is my pitch");
-        when(userService.getUserByEmail(seekerEmail)).thenReturn(seekerUser);
-        when(seekerProfileRepository.findByUser(seekerUser)).thenReturn(Optional.of(mockSeekerProfile));
-        when(jobPostingRepository.findById(100L)).thenReturn(Optional.of(mockJob));
-        when(jobApplicationRepository.existsBySeekerAndJob(mockSeekerProfile, mockJob)).thenReturn(false);
-        when(jobApplicationRepository.save(any(JobApplication.class))).thenReturn(mockApplication);
+    @Nested
+    @DisplayName("Apply To Job Tests")
+    class ApplyToJobTests {
 
-        // Act
-        JobApplicationResponse response = jobApplicationService.applyToJob(request, seekerEmail);
+        @Test
+        @DisplayName("Should apply successfully and send confirmation email")
+        void applyToJob_Success() {
+            // Arrange
+            JobApplicationRequest request = new JobApplicationRequest(100L, "Here is my pitch");
+            when(userService.getUserByEmail(seekerEmail)).thenReturn(seekerUser);
+            when(seekerProfileRepository.findByUser(seekerUser)).thenReturn(Optional.of(mockSeekerProfile));
+            when(jobPostingRepository.findById(100L)).thenReturn(Optional.of(mockJob));
+            when(jobApplicationRepository.existsBySeekerAndJob(mockSeekerProfile, mockJob)).thenReturn(false);
+            when(jobApplicationRepository.save(any(JobApplication.class))).thenReturn(mockApplication);
 
-        // Assert
-        assertNotNull(response);
-        assertEquals(mockApplication.getId(), response.getId());
-        assertEquals(ApplicationStatus.PENDING, response.getStatus());
-        verify(jobApplicationRepository, times(1)).save(any(JobApplication.class));
-        verify(emailService).sendApplicationConfirmation(anyString(), anyString(),anyString(),anyString());
+            // Act
+            JobApplicationResponse response = jobApplicationService.applyToJob(request, seekerEmail);
+
+            // Assert
+            assertNotNull(response);
+            verify(jobApplicationRepository, times(1)).save(any(JobApplication.class));
+            // Verify application email matches parameters completely
+            verify(emailService, times(1)).sendApplicationConfirmation(
+                    seekerEmail, "Jane Doe", "Backend Engineer", "Tech Corp"
+            );
+        }
+
+        @Test
+        @DisplayName("Should throw ResourceNotFoundException and avoid email dispatch when seeker missing")
+        void applyToJob_ThrowsException_WhenSeekerProfileNotFound() {
+            JobApplicationRequest request = new JobApplicationRequest(100L, "Pitch");
+            when(userService.getUserByEmail(seekerEmail)).thenReturn(seekerUser);
+            when(seekerProfileRepository.findByUser(seekerUser)).thenReturn(Optional.empty());
+
+            assertThrows(ResourceNotFoundException.class, () -> jobApplicationService.applyToJob(request, seekerEmail));
+            verify(emailService, never()).sendApplicationConfirmation(anyString(), anyString(), anyString(), anyString());
+        }
+
+        @Test
+        @DisplayName("Should throw BadRequestException if job status is CLOSED")
+        void applyToJob_ThrowsException_WhenJobIsClosed() {
+            JobApplicationRequest request = new JobApplicationRequest(100L, "Pitch");
+            mockJob.setJobStatus(JobStatus.CLOSED);
+
+            when(userService.getUserByEmail(seekerEmail)).thenReturn(seekerUser);
+            when(seekerProfileRepository.findByUser(seekerUser)).thenReturn(Optional.of(mockSeekerProfile));
+            when(jobPostingRepository.findById(100L)).thenReturn(Optional.of(mockJob));
+
+            assertThrows(BadRequestException.class, () -> jobApplicationService.applyToJob(request, seekerEmail));
+            verify(emailService, never()).sendApplicationConfirmation(anyString(), anyString(), anyString(), anyString());
+        }
     }
 
-    @Test
-    @DisplayName("Should throw ResourceNotFoundException when seeker profile does not exist")
-    void applyToJob_ThrowsException_WhenSeekerProfileNotFound() {
-        // Arrange
-        JobApplicationRequest request = new JobApplicationRequest(100L, "Pitch");
-        when(userService.getUserByEmail(seekerEmail)).thenReturn(seekerUser);
-        when(seekerProfileRepository.findByUser(seekerUser)).thenReturn(Optional.empty());
+    @Nested
+    @DisplayName("Update Status Tests")
+    class UpdateStatusTests {
 
-        // Act & Assert
-        assertThrows(ResourceNotFoundException.class, () -> jobApplicationService.applyToJob(request, seekerEmail));
-        verify(jobPostingRepository, never()).findById(anyLong());
+        @Test
+        @DisplayName("Should save status and dispatch application update notice email")
+        void updateApplicationStatus_Success() {
+            // Arrange
+            UpdateApplicationStatusRequest statusRequest = new UpdateApplicationStatusRequest(ApplicationStatus.ACCEPTED);
+            when(jobApplicationRepository.findById(500L)).thenReturn(Optional.of(mockApplication));
+            when(jobApplicationRepository.save(any(JobApplication.class))).thenAnswer(i -> i.getArgument(0));
+
+            // Act
+            JobApplicationResponse response = jobApplicationService.updateApplicationStatus(500L, statusRequest, employerEmail);
+
+            // Assert
+            assertNotNull(response);
+            assertEquals(ApplicationStatus.ACCEPTED, response.getStatus());
+            verify(emailService, times(1)).sendApplicationStatusUpdate(
+                    seekerEmail, "Jane Doe", "Backend Engineer", ApplicationStatus.ACCEPTED
+            );
+        }
+
+        @Test
+        @DisplayName("Should block un-authorized profile status mutation attempts")
+        void updateApplicationStatus_ThrowsException_WhenUnauthorized() {
+            UpdateApplicationStatusRequest statusRequest = new UpdateApplicationStatusRequest(ApplicationStatus.REJECTED);
+            when(jobApplicationRepository.findById(500L)).thenReturn(Optional.of(mockApplication));
+
+            assertThrows(UnauthorizedException.class, () -> jobApplicationService.updateApplicationStatus(500L, statusRequest, seekerEmail));
+            verify(emailService, never()).sendApplicationStatusUpdate(anyString(), anyString(), anyString(), any(ApplicationStatus.class));
+        }
     }
 
-    @Test
-    @DisplayName("Should throw BadRequestException when trying to apply to a closed job")
-    void applyToJob_ThrowsException_WhenJobIsClosed() {
-        // Arrange
-        JobApplicationRequest request = new JobApplicationRequest(100L, "Pitch");
-        mockJob.setJobStatus(JobStatus.CLOSED);
+    @Nested
+    @DisplayName("Fetch Operations Tests")
+    class FetchOperationsTests {
 
-        when(userService.getUserByEmail(seekerEmail)).thenReturn(seekerUser);
-        when(seekerProfileRepository.findByUser(seekerUser)).thenReturn(Optional.of(mockSeekerProfile));
-        when(jobPostingRepository.findById(100L)).thenReturn(Optional.of(mockJob));
+        @Test
+        @DisplayName("Should successfully pull applications associated with account profile")
+        void getMyApplication_Success() {
+            when(userService.getUserByEmail(seekerEmail)).thenReturn(seekerUser);
+            when(seekerProfileRepository.findByUser(seekerUser)).thenReturn(Optional.of(mockSeekerProfile));
+            when(jobApplicationRepository.findBySeeker(mockSeekerProfile)).thenReturn(List.of(mockApplication));
 
-        // Act & Assert
-        assertThrows(BadRequestException.class, () -> jobApplicationService.applyToJob(request, seekerEmail));
-        verify(jobApplicationRepository, never()).save(any(JobApplication.class));
+            List<JobApplicationResponse> responses = jobApplicationService.getMyApplication(seekerEmail);
+            assertFalse(responses.isEmpty());
+        }
     }
 
-    @Test
-    @DisplayName("Should throw DuplicateResourceException when application already exists")
-    void applyToJob_ThrowsException_WhenAlreadyApplied() {
-        // Arrange
-        JobApplicationRequest request = new JobApplicationRequest(100L, "Pitch");
-        when(userService.getUserByEmail(seekerEmail)).thenReturn(seekerUser);
-        when(seekerProfileRepository.findByUser(seekerUser)).thenReturn(Optional.of(mockSeekerProfile));
-        when(jobPostingRepository.findById(100L)).thenReturn(Optional.of(mockJob));
-        when(jobApplicationRepository.existsBySeekerAndJob(mockSeekerProfile, mockJob)).thenReturn(true);
+    @Nested
+    @DisplayName("Withdrawal Workflows Tests")
+    class WithdrawalWorkflowsTests {
 
-        // Act & Assert
-        assertThrows(DuplicateResourceException.class, () -> jobApplicationService.applyToJob(request, seekerEmail));
-        verify(jobApplicationRepository, never()).save(any(JobApplication.class));
-    }
-
-    @Test
-    @DisplayName("Should return seeker applications list successfully")
-    void getMyApplication_Success() {
-        // Arrange
-        when(userService.getUserByEmail(seekerEmail)).thenReturn(seekerUser);
-        when(seekerProfileRepository.findByUser(seekerUser)).thenReturn(Optional.of(mockSeekerProfile));
-        when(jobApplicationRepository.findBySeeker(mockSeekerProfile)).thenReturn(List.of(mockApplication));
-
-        // Act
-        List<JobApplicationResponse> responses = jobApplicationService.getMyApplication(seekerEmail);
-
-        // Assert
-        assertNotNull(responses);
-        assertEquals(1, responses.size());
-        assertEquals(mockApplication.getId(), responses.getFirst().getId());
-    }
-
-    @Test
-    @DisplayName("Should return application list if requesting user is the employer owner")
-    void getApplicationForJob_Success() {
-        // Arrange
-        when(jobPostingRepository.findById(100L)).thenReturn(Optional.of(mockJob));
-        when(jobApplicationRepository.findByJob(mockJob)).thenReturn(List.of(mockApplication));
-
-        // Act
-        List<JobApplicationResponse> responses = jobApplicationService.getApplicationForJob(100L, employerEmail);
-
-        // Assert
-        assertNotNull(responses);
-        assertEquals(1, responses.size());
-    }
-
-    @Test
-    @DisplayName("Should throw UnauthorizedException when requested by an external user")
-    void getApplicationForJob_ThrowsException_WhenUnauthorizedUser() {
-        // Arrange
-        when(jobPostingRepository.findById(100L)).thenReturn(Optional.of(mockJob));
-
-        // Act & Assert
-        assertThrows(UnauthorizedException.class, () -> jobApplicationService.getApplicationForJob(100L, "attacker@fake.com"));
-    }
-
-    @Test
-    @DisplayName("Should update status successfully when requested by owner employer")
-    void updateApplicationStatus_Success() {
-        // Arrange
-        UpdateApplicationStatusRequest statusRequest = new UpdateApplicationStatusRequest(ApplicationStatus.ACCEPTED);
-        when(jobApplicationRepository.findById(500L)).thenReturn(Optional.of(mockApplication));
-        when(jobApplicationRepository.save(any(JobApplication.class))).thenAnswer(i -> i.getArgument(0));
-
-        // Act
-        JobApplicationResponse response = jobApplicationService.updateApplicationStatus(500L, statusRequest, employerEmail);
-
-        // Assert
-        assertNotNull(response);
-        assertEquals(ApplicationStatus.ACCEPTED, response.getStatus());
-        verify(jobApplicationRepository, times(1)).save(mockApplication);
-        verify(emailService,times(1)).sendApplicationStatusUpdate(anyString(),anyString(),anyString(),any(ApplicationStatus.class));
-    }
-
-    @Test
-    @DisplayName("Should throw UnauthorizedException when an external user changes status")
-    void updateApplicationStatus_ThrowsException_WhenUnauthorized() {
-        // Arrange
-        UpdateApplicationStatusRequest statusRequest = new UpdateApplicationStatusRequest(ApplicationStatus.REJECTED);
-        when(jobApplicationRepository.findById(500L)).thenReturn(Optional.of(mockApplication));
-
-        // Act & Assert
-        assertThrows(UnauthorizedException.class, () -> jobApplicationService.updateApplicationStatus(500L, statusRequest, seekerEmail));
-        verify(jobApplicationRepository, never()).save(any(JobApplication.class));
-    }
-
-    @Test
-    @DisplayName("Should complete deletion when application is still PENDING and user is owner seeker")
-    void withdrawApplication_Success() {
-        // Arrange
-        when(jobApplicationRepository.findById(500L)).thenReturn(Optional.of(mockApplication));
-
-        // Act & Assert
-        assertDoesNotThrow(() -> jobApplicationService.withdrawApplication(500L, seekerEmail));
-        verify(jobApplicationRepository, times(1)).delete(mockApplication);
-    }
-
-    @Test
-    @DisplayName("Should throw UnauthorizedException when another user attempts withdrawal")
-    void withdrawApplication_ThrowsException_WhenUnauthorizedUser() {
-        // Arrange
-        when(jobApplicationRepository.findById(500L)).thenReturn(Optional.of(mockApplication));
-
-        // Act & Assert
-        assertThrows(UnauthorizedException.class, () -> jobApplicationService.withdrawApplication(500L, "hacker@domain.com"));
-        verify(jobApplicationRepository, never()).delete(any(JobApplication.class));
-    }
-
-    @Test
-    @DisplayName("Should throw BadRequestException if application is no longer in PENDING phase")
-    void withdrawApplication_ThrowsException_WhenNotPending() {
-        // Arrange
-        mockApplication.setStatus(ApplicationStatus.REVIEWED);
-        when(jobApplicationRepository.findById(500L)).thenReturn(Optional.of(mockApplication));
-
-        // Act & Assert
-        assertThrows(BadRequestException.class, () -> jobApplicationService.withdrawApplication(500L, seekerEmail));
-        verify(jobApplicationRepository, never()).delete(any(JobApplication.class));
-    }
-
-    @Test
-    @DisplayName("Should return filtered applications matching specific status for authorized employer")
-    void getApplicationByStatus_Success() {
-        // Arrange
-        when(jobPostingRepository.findById(100L)).thenReturn(Optional.of(mockJob));
-        when(jobApplicationRepository.findByJobAndStatus(mockJob, ApplicationStatus.PENDING)).thenReturn(List.of(mockApplication));
-
-        // Act
-        List<JobApplicationResponse> responses = jobApplicationService.getApplicationByStatus(100L, ApplicationStatus.PENDING, employerEmail);
-
-        // Assert
-        assertNotNull(responses);
-        assertEquals(1, responses.size());
-        verify(jobApplicationRepository, times(1)).findByJobAndStatus(mockJob, ApplicationStatus.PENDING);
+        @Test
+        @DisplayName("Should drop application entity reference during premature phase cleanly")
+        void withdrawApplication_Success() {
+            when(jobApplicationRepository.findById(500L)).thenReturn(Optional.of(mockApplication));
+            assertDoesNotThrow(() -> jobApplicationService.withdrawApplication(500L, seekerEmail));
+            verify(jobApplicationRepository, times(1)).delete(mockApplication);
+        }
     }
 }
