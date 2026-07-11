@@ -14,6 +14,18 @@ spring:
     multipart:
       max-file-size: 5MB
       max-request-size: 5MB
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: ${MAIL_USERNAME}
+    password: ${MAIL_PASSWORD}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+            required: true
 
 jwt:
   secret: ${JWT_SECRET:changeme-replace-in-production}
@@ -21,3 +33,8 @@ jwt:
 
 file:
   upload-dir: ${FILE_UPLOAD_DIR:uploads/resumes}
+
+springdoc:
+  swagger-ui:
+    enabled: true
+  default-consumes-media-type: multipart/form-data

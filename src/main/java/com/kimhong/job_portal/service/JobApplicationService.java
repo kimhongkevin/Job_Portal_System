@@ -23,6 +23,7 @@ public class JobApplicationService {
     private final SeekerProfileRepository seekerProfileRepository;
     private final JobPostingRepository jobPostingRepository;
     private final UserService userService;
+    private final EmailService emailService;
 
     private JobApplicationResponse mapToJobApplicationResponse(JobApplication application){
         return new JobApplicationResponse(
@@ -56,8 +57,15 @@ public class JobApplicationService {
                         .status(ApplicationStatus.PENDING)
                         .coverLetter(request.getCoverLetter())
                         .build();
+        JobApplication saved = jobApplicationRepository.save(application);
 
-        return mapToJobApplicationResponse(jobApplicationRepository.save(application));
+        emailService.sendApplicationConfirmation(
+                profile.getUser().getEmail(),
+                profile.getUser().getFullName(),
+                job.getTitle(),
+                job.getEmployer().getCompanyName());
+
+        return mapToJobApplicationResponse(saved);
     }
 
     public List<JobApplicationResponse> getMyApplication(String email){
@@ -94,7 +102,15 @@ public class JobApplicationService {
 
         application.setStatus(request.getStatus());
 
-        return mapToJobApplicationResponse(jobApplicationRepository.save(application));
+        JobApplication saved = jobApplicationRepository.save(application);
+        emailService.sendApplicationStatusUpdate(
+                application.getSeeker().getUser().getEmail(),
+                application.getSeeker().getUser().getFullName(),
+                application.getJob().getTitle(),
+                request.getStatus()
+        );
+
+        return mapToJobApplicationResponse(saved);
     }
 
     // Seeker withdraws application (only if PENDING)

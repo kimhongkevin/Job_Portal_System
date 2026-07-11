@@ -24,6 +24,7 @@ public class AuthService {
     private final JwtUtil jwtUtil;
     private final PasswordEncoder passwordEncoder;
     private final AuthenticationManager authenticationManager;
+    private final EmailService emailService;
 
     public AuthResponse register(RegisterRequest request){
         if(userRepository.existsByEmail(request.getEmail())){
@@ -39,7 +40,11 @@ public class AuthService {
 
         String token = jwtUtil.generateToken(user.getEmail(),user.getRole().name());
 
-        return new AuthResponse(token, user.getEmail(), user.getRole());
+        AuthResponse response = new AuthResponse(token, user.getEmail(), user.getRole());
+
+        emailService.sendWelcomeEmail(user.getEmail(),user.getFullName());
+
+        return response;
     }
 
     public AuthResponse login(LoginRequest request){
