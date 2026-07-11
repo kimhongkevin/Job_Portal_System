@@ -42,6 +42,9 @@ public class AuthServiceTest {
     @Mock
     private AuthenticationManager authenticationManager;
 
+    @Mock
+    private EmailService emailService;
+
     @InjectMocks
     private AuthService authService;
 
@@ -82,6 +85,7 @@ public class AuthServiceTest {
 
         verify(userRepository, times(1)).existsByEmail(request.getEmail());
         verify(userRepository, times(1)).save(any(User.class));
+        verify(emailService).sendWelcomeEmail(anyString(), anyString());
     }
 
     @Test

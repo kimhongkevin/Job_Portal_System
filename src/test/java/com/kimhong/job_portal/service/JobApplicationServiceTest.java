@@ -42,6 +42,9 @@ class JobApplicationServiceTest {
     @Mock
     private UserService userService;
 
+    @Mock
+    private EmailService emailService;
+
     @InjectMocks
     private JobApplicationService jobApplicationService;
 
@@ -110,6 +113,7 @@ class JobApplicationServiceTest {
         assertEquals(mockApplication.getId(), response.getId());
         assertEquals(ApplicationStatus.PENDING, response.getStatus());
         verify(jobApplicationRepository, times(1)).save(any(JobApplication.class));
+        verify(emailService).sendApplicationConfirmation(anyString(), anyString(),anyString(),anyString());
     }
 
     @Test
@@ -213,6 +217,7 @@ class JobApplicationServiceTest {
         assertNotNull(response);
         assertEquals(ApplicationStatus.ACCEPTED, response.getStatus());
         verify(jobApplicationRepository, times(1)).save(mockApplication);
+        verify(emailService,times(1)).sendApplicationStatusUpdate(anyString(),anyString(),anyString(),any(ApplicationStatus.class));
     }
 
     @Test
