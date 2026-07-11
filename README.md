@@ -43,6 +43,7 @@ https://job-portal-system-f3pq.onrender.com/swagger-ui/index.html
 - Request Validation
 - RESTful API
 - Swagger/OpenAPI Documentation
+- Email notifications (welcome, application confirmation, status updates)
 
 ---
 
