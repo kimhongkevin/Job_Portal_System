@@ -45,6 +45,14 @@ https://job-portal-system-f3pq.onrender.com/swagger-ui/index.html
 - Swagger/OpenAPI Documentation
 - Email notifications (welcome, application confirmation, status updates)
 
+## DevOps
+
+- GitHub Actions CI
+- Automatic Maven build
+- Automatic JUnit test execution
+- Docker support
+- Render deployment
+
 ---
 
 ## 🛠 Tech Stack
