@@ -26,21 +26,12 @@ public class AuthController {
 
     @PostMapping("/register")
     @Operation(summary = "Register a new user", description = "Register as JOB_SEEKER,EMPLOYER,ADMIN")
-    @ApiResponses({
-            @ApiResponse(responseCode = "200",description = "Successfully register"),
-            @ApiResponse(responseCode = "409",description = "Email already exist"),
-            @ApiResponse(responseCode = "400",description = "Invalid input")
-    })
     public ResponseEntity<AuthResponse> registerUser(@Valid @RequestBody RegisterRequest request) {
         return ResponseEntity.ok(authService.register(request));
     }
 
     @PostMapping("/login")
     @Operation(summary = "Login a user", description = "Login as JOB_SEEKER,EMPLOYER,ADMIN")
-    @ApiResponses({
-            @ApiResponse(responseCode = "200",description = "Successfully register"),
-            @ApiResponse(responseCode = "400",description = "Invalid input")
-    })
     public ResponseEntity<AuthResponse> loginUser(@Valid @RequestBody LoginRequest request) {
         return ResponseEntity.ok(authService.login(request));
     }

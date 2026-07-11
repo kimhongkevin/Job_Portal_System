@@ -37,4 +37,3 @@ file:
 springdoc:
   swagger-ui:
     enabled: true
-  default-consumes-media-type: multipart/form-data

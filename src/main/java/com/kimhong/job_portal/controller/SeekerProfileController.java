@@ -52,8 +52,12 @@ public class SeekerProfileController {
     @PostMapping("/resume")
     @Operation(summary="Seeker uploads resume. If has existing, it replace the previous resume")
     public ResponseEntity<SeekerProfileResponse> uploadResume(
-            @Parameter(description = "PDF file to upload", required = true)
-            @RequestParam("file") MultipartFile file, // @RequestParam("file") not @RequestBody — file uploads use multipart/form-data, not JSON.
+            @io.swagger.v3.oas.annotations.parameters.RequestBody(
+                    content = @io.swagger.v3.oas.annotations.media.Content(
+                            mediaType = org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE
+                    )
+            )
+            @RequestParam("file") MultipartFile file,
             Authentication authentication
             ) {
         return ResponseEntity.ok(seekerProfileService.uploadResume(file, authentication.getName()));
