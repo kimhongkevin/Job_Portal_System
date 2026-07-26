@@ -8,7 +8,7 @@ spring:
     password: ${SPRING_DATASOURCE_PASSWORD:changeme}
   jpa:
     hibernate:
-      ddl-auto: validate
+      ddl-auto: update
     show-sql: true
   servlet:
     multipart:
@@ -26,9 +26,19 @@ spring:
           starttls:
             enable: true
             required: true
+  management:
+    endpoints:
+      web:
+        exposure:
+          include: health
   flyway:
     enabled: true
     locations: classpath:db/migration
+  management:
+    endpoints:
+      web:
+        exposure:
+          include: health
 
 jwt:
   secret: ${JWT_SECRET:changeme-replace-in-production}
