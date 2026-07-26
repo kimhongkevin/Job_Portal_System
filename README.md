@@ -7,10 +7,10 @@ A full-featured Job Portal REST API built with Java Spring Boot. It supports job
 ## 🚀 Live Demo
 
 Backend API:
-https://job-portal-system-f3pq.onrender.com
+https://job-portal-system-01.onrender.com
 
-Swagger UI:
-https://job-portal-system-f3pq.onrender.com/swagger-ui/index.html
+Swagger UI
+https://job-portal-system-01.onrender.com//swagger-ui/index.html
 
 ---
 
@@ -118,7 +118,7 @@ http://localhost:8080/swagger-ui/index.html
 After deployment:
 
 ```
-https://job-portal-system-f3pq.onrender.com/swagger-ui/index.html
+https://job-portal-system-01.onrender.com//swagger-ui/index.html
 ```
 
 ---
