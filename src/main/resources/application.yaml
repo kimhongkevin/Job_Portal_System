@@ -35,9 +35,9 @@ jwt:
   expiration: ${JWT_EXPIRATION:86400000}
 
 file:
-  upload-folder:
-    upload-resume-dir: uploads/resumes
-    upload-image-dir: uploads/images
+  uploads:
+    upload-resume: uploads/resumes
+    upload-image: uploads/images
 
 springdoc:
   swagger-ui:
