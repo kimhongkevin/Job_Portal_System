@@ -8,7 +8,7 @@ spring:
     password: ${SPRING_DATASOURCE_PASSWORD:changeme}
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: validate
     show-sql: true
   servlet:
     multipart:
@@ -26,13 +26,18 @@ spring:
           starttls:
             enable: true
             required: true
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
 
 jwt:
   secret: ${JWT_SECRET:changeme-replace-in-production}
   expiration: ${JWT_EXPIRATION:86400000}
 
 file:
-  upload-dir: ${FILE_UPLOAD_DIR:uploads/resumes}
+  upload-folder:
+    upload-resume-dir: uploads/resumes
+    upload-image-dir: uploads/images
 
 springdoc:
   swagger-ui:

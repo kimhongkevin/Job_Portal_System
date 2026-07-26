@@ -10,62 +10,81 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
+import java.util.List;
 import java.util.UUID;
 
 @Service
 public class FileStorageService {
-    @Value("${file.upload-dir}")
-    private String uploadDir;
 
-    public String storeFile(MultipartFile file) {
+    @Value("${file.uploads.upload-resume}")
+    private String uploadResumeDir;
+
+    @Value("${file.uploads.upload-image}")
+    private String uploadImageDir;
+
+    private void validateFile(MultipartFile file, List<String> allowedType, Long maxSize, String errorMessage){
+        if(file == null || file.isEmpty())
+            throw new BadRequestException("File cannot be empty");
+
+        if(file.getContentType() == null || !allowedType.contains(file.getContentType()))
+            throw new BadRequestException(errorMessage);
+
+        if(file.getSize() > maxSize)
+            throw new BadRequestException(errorMessage);
+    }
+
+    private String saveToDisk(MultipartFile file, String targetDir){
         try {
-            // Check whether file is empty
-            if(file.isEmpty())
-                throw new BadRequestException("File is empty");
-
-            // Validate file is PDF
-            String contentType = file.getContentType();
-            if(contentType == null || !contentType.equals("application/pdf"))
-                throw new BadRequestException("Only PDF files are allowed");
-
-            // Validate file size
-            if(file.getSize() > 5*1024*1024)
-                throw new BadRequestException("File size must be less than 5MB");
-
-            // Generate unique file names, avoid duplicated file name
             String originalFileName = file.getOriginalFilename();
-            String extension = originalFileName.substring(originalFileName.lastIndexOf("."));
-            String uniqueFileName = UUID.randomUUID().toString()+extension;
+            String extension = "";
+            if(originalFileName != null && originalFileName.contains(".")){
+                extension = originalFileName.substring(originalFileName.lastIndexOf("."));
+            }
+            String uniqueFileName = UUID.randomUUID() + extension;
 
             // Create upload directory
-            Path uploadPath = Paths.get(uploadDir);
+            Path uploadPath = Paths.get(targetDir);
+
             if(!Files.exists(uploadPath))
                 Files.createDirectories(uploadPath);
 
-            //Save file to path
+            // save file to upload path
             Path filePath = uploadPath.resolve(uniqueFileName);
-            Files.copy(file.getInputStream(),filePath, StandardCopyOption.REPLACE_EXISTING);
+            Files.copy(file.getInputStream(),uploadPath, StandardCopyOption.REPLACE_EXISTING);
 
-            return uploadDir+"/"+uniqueFileName;
+            return uploadPath+"/"+uniqueFileName;
+
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
+    }
 
+    public String storeResume(MultipartFile file){
+        validateFile(file,List.of("application/pdf"),  5 * 1024 * 1024L,"Only PDF files under 5MB are allowed");
+        return saveToDisk(file,uploadResumeDir);
+    }
+
+    public String storeImage(MultipartFile image){
+       List<String> allowedImageType = List.of(
+               "image/jpeg",
+               "image/png",
+               "image/webp"
+       );
+
+       validateFile(image,allowedImageType,2 * 1024 * 1024L,"Only JPEG, PNG, or WebP images under 2MB are allowed");
+       return saveToDisk(image,uploadImageDir);
     }
 
     public void deleteFile(String fileUrl){
-        if(fileUrl == null || fileUrl.isBlank()){
-            return;
-        }
         try {
-            Path filePath = Paths.get(fileUrl);
-            Files.deleteIfExists(filePath);
-
+            if(fileUrl == null || fileUrl.isBlank()){
+                return;
+            }
+            Path filepath = Paths.get(fileUrl);
+            Files.deleteIfExists(filepath);
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            throw new RuntimeException("Fail to delete file: "+e.getMessage());
         }
     }
-
-
 
 }

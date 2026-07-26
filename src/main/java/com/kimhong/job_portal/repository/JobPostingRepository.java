@@ -18,6 +18,11 @@ public interface JobPostingRepository extends JpaRepository<JobPosting,Long> {
     // Find all jobs by a specific employer
     List<JobPosting> findByEmployer(EmployerProfile employer);
 
+    @Query("""
+        SELECT COUNT(j) FROM JobPosting j WHERE j.employer = :employer AND j.jobStatus = 'OPEN'
+""")
+    int countOpenJobByEmployer(@Param("employer") EmployerProfile employer);
+
     // With Pagination
 
     // Paginated open jobs

@@ -90,7 +90,7 @@ public class SeekerProfileService {
         if(profile.getResumeUrl() != null && !profile.getResumeUrl().isBlank())
             fileStorageService.deleteFile(profile.getResumeUrl());
 
-        String fileUrl = fileStorageService.storeFile(file);
+        String fileUrl = fileStorageService.storeResume(file);
 
         profile.setResumeUrl(fileUrl);
 

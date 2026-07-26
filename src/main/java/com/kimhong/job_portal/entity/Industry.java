@@ -1,0 +1,6 @@
+package com.kimhong.job_portal.entity;
+
+public enum Industry {
+    IT,FINANCE,HEALTHCARE,EDUCATION,MANUFACTURING,CONSTRUCTION,MARKETING,HOSPITAL,
+    AGRICULTURE,LOGISTIC,NGO,OTHERS
+}
