@@ -3,6 +3,8 @@ package com.kimhong.job_portal.controller;
 import com.kimhong.job_portal.dto.JobPostingRequest;
 import com.kimhong.job_portal.dto.JobPostingResponse;
 import com.kimhong.job_portal.dto.PageResponse;
+import com.kimhong.job_portal.entity.ExperienceLevel;
+import com.kimhong.job_portal.entity.JobCategory;
 import com.kimhong.job_portal.entity.JobType;
 import com.kimhong.job_portal.exception.BadRequestException;
 import com.kimhong.job_portal.service.JobPostingService;
@@ -109,13 +111,15 @@ public class JobPostingController {
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) String location,
             @RequestParam(required = false) JobType jobType,
+            @RequestParam(required = false) Long categoryId,
+            @RequestParam(required = false) ExperienceLevel experienceLevel,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(defaultValue = "createdAt") String sortBy,
             @RequestParam(defaultValue = "desc") String sortDir
             ){
 
-        return ResponseEntity.ok(jobPostingService.searchJobs(keyword,location,jobType,
+        return ResponseEntity.ok(jobPostingService.searchJobs(keyword,location,jobType,categoryId,experienceLevel,
                 buildPageable(page,size,sortBy,sortDir)));
 
     }

@@ -1,9 +1,6 @@
 package com.kimhong.job_portal.repository;
 
-import com.kimhong.job_portal.entity.EmployerProfile;
-import com.kimhong.job_portal.entity.JobPosting;
-import com.kimhong.job_portal.entity.JobStatus;
-import com.kimhong.job_portal.entity.JobType;
+import com.kimhong.job_portal.entity.*;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -21,7 +18,14 @@ public interface JobPostingRepository extends JpaRepository<JobPosting,Long> {
     @Query("""
         SELECT COUNT(j) FROM JobPosting j WHERE j.employer = :employer AND j.jobStatus = 'OPEN'
 """)
-    int countOpenJobByEmployer(@Param("employer") EmployerProfile employer);
+    Long countOpenJobsByEmployer(@Param("employer") EmployerProfile employer);
+
+    @Query("""
+        SELECT COUNT(j) FROM JobPosting j WHERE j.category = :category AND j.jobStatus = 'OPEN'
+""")
+    Long countOpenJobsByCategory(@Param("category") JobCategory category);
+
+
 
     // With Pagination
 
@@ -35,12 +39,17 @@ public interface JobPostingRepository extends JpaRepository<JobPosting,Long> {
     (:keyword IS NULL OR LOWER(j.title) LIKE LOWER(CONCAT('%', CAST(:keyword AS string), '%')))
     AND (:location IS NULL OR LOWER(j.location) LIKE LOWER(CONCAT('%', CAST(:location AS string), '%')))
     AND (:jobType IS NULL OR j.jobType = :jobType)
+    AND (:category IS NULL OR j.category = :category)
+    AND (:experienceLevel IS NULL OR j.experienceLevel = :experienceLevel)
     AND j.jobStatus = 'OPEN'
+    AND (j.deadline IS NULL OR j.deadline >= CURRENT_DATE)
 """)
     Page<JobPosting> searchJobs(
             @Param("keyword") String keyword,
             @Param("location") String location,
             @Param("jobType") JobType jobType,
+            @Param("category") JobCategory jobCategory,
+            @Param("experienceLevel") ExperienceLevel experienceLevel,
             Pageable pageable
     );
 

@@ -44,7 +44,7 @@ public class EmployerProfileService {
 
     private CompanyPublicResponse mapToCompanyPubicResponse(EmployerProfile profile){
 
-        int activeJobCount = jobPostingRepository.countOpenJobByEmployer(profile);
+        Long activeJobCount = jobPostingRepository.countOpenJobsByEmployer(profile);
 
         return new CompanyPublicResponse(
                 profile.getId(),
@@ -59,7 +59,7 @@ public class EmployerProfileService {
                 profile.getCompanyLogoUrl(),
                 profile.getFacebookUrl(),
                 profile.getLinkedinUrl(),
-                activeJobCount,
+                Math.toIntExact(activeJobCount),
                 profile.getCreatedAt()
 
         );

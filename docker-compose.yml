@@ -29,10 +29,13 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/jobportal_db
       SPRING_DATASOURCE_USERNAME: postgres
       SPRING_DATASOURCE_PASSWORD: 123
-      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+      SPRING_JPA_HIBERNATE_DDL_AUTO: validate
       JWT_SECRET: your-super-long-random-secret-key-min-32-characters-long
       JWT_EXPIRATION: 86400000
-      FILE_UPLOAD_DIR: /app/uploads/resumes
+      FILE_UPLOAD_RESUME_DIR: /app/uploads/resumes
+      FILE_UPLOAD_IMAGE_DIR: /app/uploads/images
+      MAIL_USERNAME: kimhongphb96@gmail.com
+      MAIL_PASSWORD: frwtyxzxiooojlua
     depends_on:
       db:
         condition: service_healthy

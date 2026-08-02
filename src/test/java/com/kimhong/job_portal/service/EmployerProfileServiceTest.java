@@ -197,8 +197,8 @@ public class EmployerProfileServiceTest {
         // Arrange
         when(employerProfileRepository.findAll())
                 .thenReturn(List.of(mockProfile));
-        when(jobPostingRepository.countOpenJobByEmployer(mockProfile))
-                .thenReturn(3);
+        when(jobPostingRepository.countOpenJobsByEmployer(mockProfile))
+                .thenReturn(3L);
 
         // Act
         List<CompanyPublicResponse> responses = employerProfileService
@@ -235,8 +235,8 @@ public class EmployerProfileServiceTest {
         // Arrange
         when(employerProfileRepository.findById(10L))
                 .thenReturn(Optional.of(mockProfile));
-        when(jobPostingRepository.countOpenJobByEmployer(mockProfile))
-                .thenReturn(5);
+        when(jobPostingRepository.countOpenJobsByEmployer(mockProfile))
+                .thenReturn(5L);
 
         // Act
         CompanyPublicResponse response = employerProfileService
@@ -270,8 +270,8 @@ public class EmployerProfileServiceTest {
         when(employerProfileRepository
                 .findByCompanyNameContainingIgnoreCase("tech"))
                 .thenReturn(List.of(mockProfile));
-        when(jobPostingRepository.countOpenJobByEmployer(mockProfile))
-                .thenReturn(2);
+        when(jobPostingRepository.countOpenJobsByEmployer(mockProfile))
+                .thenReturn(2L);
 
         // Act
         List<CompanyPublicResponse> responses = employerProfileService

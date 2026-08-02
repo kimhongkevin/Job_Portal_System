@@ -7,6 +7,7 @@ import com.kimhong.job_portal.entity.*;
 import com.kimhong.job_portal.exception.ResourceNotFoundException;
 import com.kimhong.job_portal.exception.UnauthorizedException;
 import com.kimhong.job_portal.repository.EmployerProfileRepository;
+import com.kimhong.job_portal.repository.JobCategoryRepository;
 import com.kimhong.job_portal.repository.JobPostingRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -39,6 +40,9 @@ public class JobPostingServiceTest {
     private EmployerProfileRepository employerProfileRepository;
 
     @Mock
+    private JobCategoryRepository jobCategoryRepository;
+
+    @Mock
     private UserService userService;
 
     @InjectMocks
@@ -47,6 +51,7 @@ public class JobPostingServiceTest {
     private User mockUser;
     private EmployerProfile mockEmployer;
     private JobPosting mockJob;
+    private JobCategory mockCategory;
     private final String userEmail = "employer@example.com";
 
     @BeforeEach
@@ -63,6 +68,11 @@ public class JobPostingServiceTest {
                 .id(100L)
                 .title("Java Developer")
                 .description("Looking for a java dev")
+                .requirement("skills in Web Development")
+                .qualification("Bachelor Degree in CS")
+                .benefits("KPI,Bonus,Annual leave")
+                .experienceLevel(ExperienceLevel.ENTRY)
+                .deadline(null)
                 .location("Phnom Penh")
                 .jobType(JobType.FULL_TIME)
                 .salary(BigDecimal.valueOf(400))
@@ -70,6 +80,13 @@ public class JobPostingServiceTest {
                 .createdAt(LocalDateTime.now())
                 .updatedAt(null)
                 .employer(mockEmployer).build();
+
+        mockCategory = JobCategory.builder()
+                .id(11L)
+                .name("IT")
+                .description("Web Dev,Network,Data Science")
+                .createdAt(LocalDateTime.now())
+                .updatedAt(null).build();
     }
 
     // ---- createJob() method testing ----
@@ -77,12 +94,24 @@ public class JobPostingServiceTest {
     @DisplayName("Should successfully create a job posting when profile exists")
     void createJob_Success() {
         //Arrange
-        JobPostingRequest request = new JobPostingRequest("Java Developer",
-                "Looking for a java dev","Phnom Penh",JobType.FULL_TIME,BigDecimal.valueOf(500));
+        JobPostingRequest request = new JobPostingRequest(
+                "Java Developer",
+                "Looking for a java dev",
+                11L,
+                "skills in Web Development",
+                "Bachelor Degree in CS",
+                "KPI,Bonus,Annual leave",
+                ExperienceLevel.ENTRY,
+                null,
+                "Phnom Penh",
+                JobType.FULL_TIME,
+                BigDecimal.valueOf(500)
+        );
 
         when(userService.getUserByEmail(userEmail)).thenReturn(mockUser);
         when(employerProfileRepository.findByUser(mockUser)).thenReturn(Optional.of(mockEmployer));
         when(jobPostingRepository.save(any(JobPosting.class))).thenReturn(mockJob);
+        when(jobCategoryRepository.findById(request.getCategoryId())).thenReturn(Optional.ofNullable(mockCategory));
 
         // Act
         JobPostingResponse response = jobPostingService.createJob(request,userEmail);
@@ -100,8 +129,19 @@ public class JobPostingServiceTest {
     @DisplayName("Should throw ResourceNotFoundException when employer profile does not exist")
     void createJob_ThrowsException_WhenProfileNotFound() {
         //Arrange
-        JobPostingRequest request = new JobPostingRequest("Java Developer",
-                "Looking for a java dev","Phnom Penh",JobType.FULL_TIME,BigDecimal.valueOf(500));
+        JobPostingRequest request = new JobPostingRequest(
+                "Java Developer",
+                "Looking for a java dev",
+                11L,
+                "skills in Web Development",
+                "Bachelor Degree in CS",
+                "KPI,Bonus,Annual leave",
+                ExperienceLevel.ENTRY,
+                null,
+                "Phnom Penh",
+                JobType.FULL_TIME,
+                BigDecimal.valueOf(500)
+        );
 
         when(userService.getUserByEmail(userEmail)).thenReturn(mockUser);
         when(employerProfileRepository.findByUser(mockUser)).thenReturn(Optional.empty());
@@ -175,9 +215,22 @@ public class JobPostingServiceTest {
     @DisplayName("Should successfully update job fields when requested by the owner")
     void updateJob_Success() {
         // Arrange
-        JobPostingRequest updateRequest = new JobPostingRequest("C# Developer",
-                "Looking for C# dev","Siemreap",JobType.CONTRACT,BigDecimal.valueOf(600));
+        JobPostingRequest updateRequest = new JobPostingRequest(
+                "C# Developer",
+                "Looking for C# dev",
+                11L,
+                "skills in Web Development",
+                "Bachelor Degree in CS",
+                "KPI,Bonus,Annual leave",
+                ExperienceLevel.ENTRY,
+                null,
+                "Siemreap",
+                JobType.CONTRACT,
+                BigDecimal.valueOf(600)
+        );
+
         when(jobPostingRepository.findById(100L)).thenReturn(Optional.of(mockJob));
+        when(jobCategoryRepository.findById(11L)).thenReturn(Optional.ofNullable(mockCategory));
         when(jobPostingRepository.save(any(JobPosting.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
         // Act
@@ -195,7 +248,20 @@ public class JobPostingServiceTest {
     @DisplayName("Should throw UnauthorizedException when an unauthorized user attempts updating")
     void updateJob_ThrowsException_WhenUnauthorized() {
         // Arrange
-        JobPostingRequest updateRequest = new JobPostingRequest("Hacker title","Desc","Loc",JobType.FULL_TIME,BigDecimal.valueOf(400));
+        JobPostingRequest updateRequest = new JobPostingRequest(
+                "Hacker Title",
+                "Desc",
+                111L,
+                "requirements",
+                "qualification",
+                "benefits",
+                ExperienceLevel.ENTRY,
+                null,
+                "Loc",
+                JobType.FULL_TIME,
+                BigDecimal.valueOf(500)
+        );
+
         when(jobPostingRepository.findById(100L)).thenReturn(Optional.of(mockJob));
 
         // Act & Assert
@@ -245,12 +311,34 @@ public class JobPostingServiceTest {
         // Arrange
         Pageable pageable = PageRequest.of(0,10);
         Page<JobPosting> emptyPage= new PageImpl<>(List.of(mockJob));
-        when(jobPostingRepository.searchJobs("Java","Phnom Penh",JobType.FULL_TIME,pageable)).thenReturn(emptyPage);
+        when(jobCategoryRepository.findById(11L)).thenReturn(Optional.of(mockCategory));
+        when(jobPostingRepository.searchJobs("Java","Phnom Penh",JobType.FULL_TIME,mockCategory,ExperienceLevel.ENTRY,pageable)).thenReturn(emptyPage);
         // Act
-        PageResponse<JobPostingResponse> response = jobPostingService.searchJobs("Java","Phnom Penh",JobType.FULL_TIME,pageable);
+        PageResponse<JobPostingResponse> response = jobPostingService.searchJobs("Java","Phnom Penh",JobType.FULL_TIME,11L,ExperienceLevel.ENTRY,pageable);
         // Assert
         assertNotNull(response);
-        verify(jobPostingRepository,times(1)).searchJobs("Java","Phnom Penh",JobType.FULL_TIME,pageable);
+        verify(jobCategoryRepository, times(1)).findById(11L);
+        verify(jobPostingRepository,times(1)).searchJobs("Java","Phnom Penh",JobType.FULL_TIME,mockCategory,ExperienceLevel.ENTRY,pageable);
+    }
+
+    @Test
+    @DisplayName("Should throw ResourceNotFoundException when category ID does not exist")
+    void searchJobs_ThrowsException_WhenCategoryNotFound() {
+        // Arrange
+        Pageable pageable = PageRequest.of(0, 10);
+
+        when(jobCategoryRepository.findById(999L))
+                .thenReturn(Optional.empty());
+
+        // Act & Assert
+        assertThrows(ResourceNotFoundException.class,
+                () -> jobPostingService.searchJobs(
+                        "Java", "Phnom Penh", JobType.FULL_TIME,
+                        999L, ExperienceLevel.ENTRY, pageable));
+
+        // Repository search should never be called
+        verify(jobPostingRepository, never()).searchJobs(
+                any(), any(), any(), any(), any(), any());
     }
 
     @Test
