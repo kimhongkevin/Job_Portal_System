@@ -47,7 +47,11 @@ public class JobPosting {
     @Enumerated(EnumType.STRING)
     private JobType jobType;
 
-    private BigDecimal salary;
+    @Column(precision = 10, scale = 2)
+    private BigDecimal minSalary;
+
+    @Column(precision = 10, scale = 2)
+    private BigDecimal maxSalary;
 
     @Builder.Default
     @Enumerated(EnumType.STRING)

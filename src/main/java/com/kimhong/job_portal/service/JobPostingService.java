@@ -13,6 +13,8 @@ import com.kimhong.job_portal.repository.JobPostingRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+
+import java.math.BigDecimal;
 import java.util.List;
 
 @Service
@@ -23,7 +25,25 @@ public class JobPostingService {
     private final JobCategoryRepository jobCategoryRepository;
     private final UserService userService;
 
+    private String computeSalaryDisplay(BigDecimal minSalary,BigDecimal maxSalary){
+        if(minSalary == null && maxSalary == null){
+            return "Negotiable";
+        }
+        if(minSalary != null && maxSalary != null){
+            if(maxSalary.compareTo(minSalary) == 0) {
+                return "$" + minSalary;
+            }
+            return "$"+minSalary +" - $"+maxSalary;
+        }
+        if(minSalary != null){
+            return "From $"+minSalary;
+        }
+        return "Up to $"+maxSalary;
+    }
+
     private JobPostingResponse mapToJobPostingResponse(JobPosting jobPosting){
+        String salaryDisplay = computeSalaryDisplay(jobPosting.getMinSalary(),jobPosting.getMaxSalary());
+
         return new JobPostingResponse(
                 jobPosting.getId(),
                 jobPosting.getTitle(),
@@ -37,7 +57,9 @@ public class JobPostingService {
                 jobPosting.getDeadline(),
                 jobPosting.getLocation(),
                 jobPosting.getJobType(),
-                jobPosting.getSalary(),
+                jobPosting.getMinSalary(),
+                jobPosting.getMaxSalary(),
+                salaryDisplay,
                 jobPosting.getJobStatus(),
                 jobPosting.getEmployer().getId(),
                 jobPosting.getEmployer().getCompanyName(),
@@ -72,7 +94,8 @@ public class JobPostingService {
                 .experienceLevel(request.getExperienceLevel())
                 .location(request.getLocation())
                 .jobType(request.getJobType())
-                .salary(request.getSalary())
+                .minSalary(request.getMinSalary())
+                .maxSalary(request.getMaxSalary())
                 .jobStatus(JobStatus.OPEN)
                 .employer(profile)
                 .build();
@@ -125,8 +148,8 @@ public class JobPostingService {
         if(request.getJobType() != null)
             job.setJobType(request.getJobType());
 
-        if(request.getSalary() != null)
-            job.setSalary(request.getSalary());
+        if(request.getMinSalary() != null)
+            job.setMinSalary(request.getMinSalary());
 
         if(request.getCategoryId() != null){
             JobCategory category = jobCategoryRepository.findById(request.getCategoryId())
@@ -159,13 +182,15 @@ public class JobPostingService {
             JobType jobType,
             Long categoryId,
             ExperienceLevel experienceLevel,
+            BigDecimal minSalary,
+            BigDecimal maxSalary,
             Pageable pageable){
 
-        JobCategory category = null;
+        JobCategory category;
         category = jobCategoryRepository.findById(categoryId)
                 .orElseThrow(()-> new ResourceNotFoundException("Category not found"));
 
-        return PageResponse.of(jobPostingRepository.searchJobs(keyword, location, jobType, category,experienceLevel,pageable)
+        return PageResponse.of(jobPostingRepository.searchJobs(keyword, location, jobType, category,experienceLevel,minSalary,maxSalary,pageable)
                 .map(this::mapToJobPostingResponse));
     }
 

@@ -4,7 +4,6 @@ import com.kimhong.job_portal.dto.JobPostingRequest;
 import com.kimhong.job_portal.dto.JobPostingResponse;
 import com.kimhong.job_portal.dto.PageResponse;
 import com.kimhong.job_portal.entity.ExperienceLevel;
-import com.kimhong.job_portal.entity.JobCategory;
 import com.kimhong.job_portal.entity.JobType;
 import com.kimhong.job_portal.exception.BadRequestException;
 import com.kimhong.job_portal.service.JobPostingService;
@@ -20,6 +19,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 @RestController
@@ -113,6 +113,8 @@ public class JobPostingController {
             @RequestParam(required = false) JobType jobType,
             @RequestParam(required = false) Long categoryId,
             @RequestParam(required = false) ExperienceLevel experienceLevel,
+            @RequestParam(required = false) BigDecimal minSalary,
+            @RequestParam(required = false) BigDecimal maxSalary,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(defaultValue = "createdAt") String sortBy,
@@ -120,7 +122,7 @@ public class JobPostingController {
             ){
 
         return ResponseEntity.ok(jobPostingService.searchJobs(keyword,location,jobType,categoryId,experienceLevel,
-                buildPageable(page,size,sortBy,sortDir)));
+                minSalary,maxSalary,buildPageable(page,size,sortBy,sortDir)));
 
     }
 

@@ -7,6 +7,8 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+
+import java.math.BigDecimal;
 import java.util.List;
 
 @Repository
@@ -41,6 +43,8 @@ public interface JobPostingRepository extends JpaRepository<JobPosting,Long> {
     AND (:jobType IS NULL OR j.jobType = :jobType)
     AND (:category IS NULL OR j.category = :category)
     AND (:experienceLevel IS NULL OR j.experienceLevel = :experienceLevel)
+    AND (:minSalary IS NULL OR j.minSalary IS NULL OR j.minSalary = :minSalary)
+    AND (:maxSalary IS NULL OR j.maxSalary IS NULL OR j.maxSalary = :maxSalary)
     AND j.jobStatus = 'OPEN'
     AND (j.deadline IS NULL OR j.deadline >= CURRENT_DATE)
 """)
@@ -50,6 +54,8 @@ public interface JobPostingRepository extends JpaRepository<JobPosting,Long> {
             @Param("jobType") JobType jobType,
             @Param("category") JobCategory jobCategory,
             @Param("experienceLevel") ExperienceLevel experienceLevel,
+            @Param("minSalary") BigDecimal minSalary,
+            @Param("maxSalary") BigDecimal maxSalary,
             Pageable pageable
     );
 

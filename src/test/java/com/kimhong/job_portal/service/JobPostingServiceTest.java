@@ -22,6 +22,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -75,7 +76,8 @@ public class JobPostingServiceTest {
                 .deadline(null)
                 .location("Phnom Penh")
                 .jobType(JobType.FULL_TIME)
-                .salary(BigDecimal.valueOf(400))
+                .minSalary(BigDecimal.valueOf(400))
+                .maxSalary(BigDecimal.valueOf(800))
                 .jobStatus(JobStatus.OPEN)
                 .createdAt(LocalDateTime.now())
                 .updatedAt(null)
@@ -102,10 +104,11 @@ public class JobPostingServiceTest {
                 "Bachelor Degree in CS",
                 "KPI,Bonus,Annual leave",
                 ExperienceLevel.ENTRY,
-                null,
+                LocalDate.of(2026,12,31),
                 "Phnom Penh",
                 JobType.FULL_TIME,
-                BigDecimal.valueOf(500)
+                BigDecimal.valueOf(400),
+                BigDecimal.valueOf(800)
         );
 
         when(userService.getUserByEmail(userEmail)).thenReturn(mockUser);
@@ -137,10 +140,11 @@ public class JobPostingServiceTest {
                 "Bachelor Degree in CS",
                 "KPI,Bonus,Annual leave",
                 ExperienceLevel.ENTRY,
-                null,
+                LocalDate.of(2026,12,31),
                 "Phnom Penh",
                 JobType.FULL_TIME,
-                BigDecimal.valueOf(500)
+                BigDecimal.valueOf(400),
+                BigDecimal.valueOf(800)
         );
 
         when(userService.getUserByEmail(userEmail)).thenReturn(mockUser);
@@ -223,10 +227,11 @@ public class JobPostingServiceTest {
                 "Bachelor Degree in CS",
                 "KPI,Bonus,Annual leave",
                 ExperienceLevel.ENTRY,
-                null,
+                LocalDate.of(2026,8,31),
                 "Siemreap",
                 JobType.CONTRACT,
-                BigDecimal.valueOf(600)
+                BigDecimal.valueOf(600),
+                BigDecimal.valueOf(1000)
         );
 
         when(jobPostingRepository.findById(100L)).thenReturn(Optional.of(mockJob));
@@ -259,7 +264,8 @@ public class JobPostingServiceTest {
                 null,
                 "Loc",
                 JobType.FULL_TIME,
-                BigDecimal.valueOf(500)
+                BigDecimal.valueOf(500),
+                BigDecimal.valueOf(700)
         );
 
         when(jobPostingRepository.findById(100L)).thenReturn(Optional.of(mockJob));

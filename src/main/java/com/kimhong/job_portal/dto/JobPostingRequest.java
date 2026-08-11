@@ -2,6 +2,8 @@ package com.kimhong.job_portal.dto;
 
 import com.kimhong.job_portal.entity.ExperienceLevel;
 import com.kimhong.job_portal.entity.JobType;
+import jakarta.validation.constraints.AssertTrue;
+import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
@@ -36,5 +38,17 @@ public class JobPostingRequest {
     @NotNull(message = "Job type is required")
     private JobType jobType;
 
-    private BigDecimal salary; // optional, no validation needed
+    @DecimalMin(value = "0.0",message = "Minimum salary cannot be negative")
+    private BigDecimal minSalary;
+
+    @DecimalMin(value = "0.0",message = "Maximum salary cannot be negative")
+    private BigDecimal maxSalary;
+
+    @AssertTrue(message = "Maximum salary must be greater or equal to minimum salary")
+    public boolean isSalaryRangeValid() {
+        if (minSalary == null || maxSalary == null) {
+            return true;
+        }
+        return maxSalary.compareTo(minSalary) >= 0;
+    }
 }

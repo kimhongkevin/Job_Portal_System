@@ -27,7 +27,9 @@ public class JobPostingResponse {
     private LocalDate deadline;
     private String location;
     private JobType jobType;
-    private BigDecimal salary;
+    private BigDecimal maxSalary;
+    private BigDecimal minSalary;
+    private String salaryDisplay;
     private JobStatus jobStatus;
     private Long employerId;
     private String companyName;
