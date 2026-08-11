@@ -318,13 +318,13 @@ public class JobPostingServiceTest {
         Pageable pageable = PageRequest.of(0,10);
         Page<JobPosting> emptyPage= new PageImpl<>(List.of(mockJob));
         when(jobCategoryRepository.findById(11L)).thenReturn(Optional.of(mockCategory));
-        when(jobPostingRepository.searchJobs("Java","Phnom Penh",JobType.FULL_TIME,mockCategory,ExperienceLevel.ENTRY,pageable)).thenReturn(emptyPage);
+        when(jobPostingRepository.searchJobs("Java","Phnom Penh",JobType.FULL_TIME,mockCategory,ExperienceLevel.ENTRY,null,null,pageable)).thenReturn(emptyPage);
         // Act
-        PageResponse<JobPostingResponse> response = jobPostingService.searchJobs("Java","Phnom Penh",JobType.FULL_TIME,11L,ExperienceLevel.ENTRY,pageable);
+        PageResponse<JobPostingResponse> response = jobPostingService.searchJobs("Java","Phnom Penh",JobType.FULL_TIME,11L,ExperienceLevel.ENTRY,null,null,pageable);
         // Assert
         assertNotNull(response);
         verify(jobCategoryRepository, times(1)).findById(11L);
-        verify(jobPostingRepository,times(1)).searchJobs("Java","Phnom Penh",JobType.FULL_TIME,mockCategory,ExperienceLevel.ENTRY,pageable);
+        verify(jobPostingRepository,times(1)).searchJobs("Java","Phnom Penh",JobType.FULL_TIME,mockCategory,ExperienceLevel.ENTRY,null,null,pageable);
     }
 
     @Test
@@ -340,11 +340,11 @@ public class JobPostingServiceTest {
         assertThrows(ResourceNotFoundException.class,
                 () -> jobPostingService.searchJobs(
                         "Java", "Phnom Penh", JobType.FULL_TIME,
-                        999L, ExperienceLevel.ENTRY, pageable));
+                        999L, ExperienceLevel.ENTRY,null,null, pageable));
 
         // Repository search should never be called
         verify(jobPostingRepository, never()).searchJobs(
-                any(), any(), any(), any(), any(), any());
+                any(), any(), any(), any(), any(), any(),any(),any());
     }
 
     @Test
