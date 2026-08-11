@@ -5,6 +5,7 @@ import com.kimhong.job_portal.dto.JobCategoryRequest;
 import com.kimhong.job_portal.dto.JobCategoryResponse;
 import com.kimhong.job_portal.service.JobCategoryService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -15,6 +16,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/categories")
+@Tag(name = "Job Category", description = "Job category endpoint")
 @RequiredArgsConstructor
 public class JobCategoryController {
     private final JobCategoryService jobCategoryService;
