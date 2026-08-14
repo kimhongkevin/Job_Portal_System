@@ -1,0 +1,36 @@
+spring:
+  application:
+    name: job_portal
+  datasource:
+    url: jdbc:h2:mem:testdb;MODE=PostgreSQL
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: 
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: false
+    database-platform: org.hibernate.dialect.H2Dialect
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    clean-disabled: false
+
+jwt:
+  secret: test-secret
+  expiration: 86400000
+
+file:
+  uploads:
+    upload-resume: uploads/resumes
+    upload-image: uploads/images
+
+springdoc:
+  swagger-ui:
+    enabled: false
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
