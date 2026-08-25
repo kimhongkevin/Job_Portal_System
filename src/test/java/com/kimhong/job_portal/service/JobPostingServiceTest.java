@@ -5,14 +5,14 @@ import com.kimhong.job_portal.dto.JobPostingResponse;
 import com.kimhong.job_portal.dto.PageResponse;
 import com.kimhong.job_portal.entity.*;
 import com.kimhong.job_portal.exception.ResourceNotFoundException;
-import com.kimhong.job_portal.exception.UnauthorizedException;
-import com.kimhong.job_portal.repository.EmployerProfileRepository;
+import com.kimhong.job_portal.repository.CompanyProfileRepository;
 import com.kimhong.job_portal.repository.JobCategoryRepository;
 import com.kimhong.job_portal.repository.JobPostingRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -38,32 +38,24 @@ public class JobPostingServiceTest {
     private JobPostingRepository jobPostingRepository;
 
     @Mock
-    private EmployerProfileRepository employerProfileRepository;
+    private CompanyProfileRepository companyProfileRepository;
 
     @Mock
     private JobCategoryRepository jobCategoryRepository;
 
-    @Mock
-    private UserService userService;
-
     @InjectMocks
     private JobPostingService jobPostingService;
 
-    private User mockUser;
-    private EmployerProfile mockEmployer;
+    private CompanyProfile mockCompany;
     private JobPosting mockJob;
     private JobCategory mockCategory;
-    private final String userEmail = "employer@example.com";
 
     @BeforeEach
     void setUp(){
-        mockUser = new User();
-        mockUser.setEmail(userEmail);
-
-        mockEmployer = new EmployerProfile();
-        mockEmployer.setId(10L);
-        mockEmployer.setCompanyName("Tech Corp");
-        mockEmployer.setUser(mockUser);
+        mockCompany = new CompanyProfile();
+        mockCompany.setId(10L);
+        mockCompany.setCompanyName("Tech Corp");
+        mockCompany.setContactEmail("hr@techcorp.com");
 
         mockJob = JobPosting.builder()
                 .id(100L)
@@ -79,9 +71,10 @@ public class JobPostingServiceTest {
                 .minSalary(BigDecimal.valueOf(400))
                 .maxSalary(BigDecimal.valueOf(800))
                 .jobStatus(JobStatus.OPEN)
+                .recruitmentModel(RecruitmentModel.JOB_BOARD)
                 .createdAt(LocalDateTime.now())
                 .updatedAt(null)
-                .employer(mockEmployer).build();
+                .company(mockCompany).build();
 
         mockCategory = JobCategory.builder()
                 .id(11L)
@@ -91,14 +84,15 @@ public class JobPostingServiceTest {
                 .updatedAt(null).build();
     }
 
-    // ---- createJob() method testing ----
-    @Test
-    @DisplayName("Should successfully create a job posting when profile exists")
-    void createJob_Success() {
-        //Arrange
-        JobPostingRequest request = new JobPostingRequest(
+    // Admin posts directly for a company — no employer profile needed.
+    // Constructor order: title, description, companyId, categoryId, requirement,
+    // qualification, benefits, experienceLevel, deadline, location, jobType,
+    // minSalary, maxSalary, recruitmentModel
+    private JobPostingRequest sampleRequest() {
+        return new JobPostingRequest(
                 "Java Developer",
                 "Looking for a java dev",
+                10L,
                 11L,
                 "skills in Web Development",
                 "Bachelor Degree in CS",
@@ -108,93 +102,90 @@ public class JobPostingServiceTest {
                 "Phnom Penh",
                 JobType.FULL_TIME,
                 BigDecimal.valueOf(400),
-                BigDecimal.valueOf(800)
+                BigDecimal.valueOf(800),
+                null
         );
+    }
 
-        when(userService.getUserByEmail(userEmail)).thenReturn(mockUser);
-        when(employerProfileRepository.findByUser(mockUser)).thenReturn(Optional.of(mockEmployer));
-        when(jobPostingRepository.save(any(JobPosting.class))).thenReturn(mockJob);
+    // ---- createJob() method testing ----
+    @Test
+    @DisplayName("Should successfully create a job posting for an existing company (defaults to JOB_BOARD)")
+    void createJob_Success() {
+        //Arrange
+        JobPostingRequest request = sampleRequest();
+        when(companyProfileRepository.findById(10L)).thenReturn(Optional.of(mockCompany));
         when(jobCategoryRepository.findById(request.getCategoryId())).thenReturn(Optional.ofNullable(mockCategory));
+        when(jobPostingRepository.save(any(JobPosting.class))).thenReturn(mockJob);
 
         // Act
-        JobPostingResponse response = jobPostingService.createJob(request,userEmail);
+        JobPostingResponse response = jobPostingService.createJob(request);
 
-        // Assert
+        // Assert — no ownership checks: admin manages everything
         assertNotNull(response);
         assertEquals(mockJob.getId(),response.getId());
         assertEquals(mockJob.getTitle(),response.getTitle());
-        assertEquals(mockJob.getEmployer().getId(),response.getEmployerId());
+        assertEquals(mockCompany.getId(),response.getCompanyId());
+        assertEquals(mockCompany.getCompanyName(),response.getCompanyName());
+        assertEquals(RecruitmentModel.JOB_BOARD,response.getRecruitmentModel());
 
-        verify(jobPostingRepository,times(1)).save(any(JobPosting.class));
+        ArgumentCaptor<JobPosting> captor = ArgumentCaptor.forClass(JobPosting.class);
+        verify(jobPostingRepository,times(1)).save(captor.capture());
+        assertEquals(mockCompany, captor.getValue().getCompany());
     }
 
     @Test
-    @DisplayName("Should throw ResourceNotFoundException when employer profile does not exist")
-    void createJob_ThrowsException_WhenProfileNotFound() {
-        //Arrange
-        JobPostingRequest request = new JobPostingRequest(
-                "Java Developer",
-                "Looking for a java dev",
-                11L,
-                "skills in Web Development",
-                "Bachelor Degree in CS",
-                "KPI,Bonus,Annual leave",
-                ExperienceLevel.ENTRY,
-                LocalDate.of(2026,12,31),
-                "Phnom Penh",
-                JobType.FULL_TIME,
-                BigDecimal.valueOf(400),
-                BigDecimal.valueOf(800)
-        );
+    @DisplayName("Should keep the requested recruitment model when provided")
+    void createJob_KeepsTalentPool_WhenRequested() {
+        // Arrange
+        JobPostingRequest request = sampleRequest();
+        request.setRecruitmentModel(RecruitmentModel.TALENT_POOL);
+        when(companyProfileRepository.findById(10L)).thenReturn(Optional.of(mockCompany));
+        when(jobCategoryRepository.findById(request.getCategoryId())).thenReturn(Optional.ofNullable(mockCategory));
+        when(jobPostingRepository.save(any(JobPosting.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        when(userService.getUserByEmail(userEmail)).thenReturn(mockUser);
-        when(employerProfileRepository.findByUser(mockUser)).thenReturn(Optional.empty());
+        // Act
+        JobPostingResponse response = jobPostingService.createJob(request);
+
+        // Assert
+        assertEquals(RecruitmentModel.TALENT_POOL, response.getRecruitmentModel());
+    }
+
+    @Test
+    @DisplayName("Should throw ResourceNotFoundException when company does not exist")
+    void createJob_ThrowsException_WhenCompanyNotFound() {
+        //Arrange
+        JobPostingRequest request = sampleRequest();
+        when(companyProfileRepository.findById(10L)).thenReturn(Optional.empty());
+
         // Act & Assert
-        assertThrows(ResourceNotFoundException.class,()-> jobPostingService.createJob(request,userEmail));
+        assertThrows(ResourceNotFoundException.class,()-> jobPostingService.createJob(request));
         verify(jobPostingRepository,never()).save(any(JobPosting.class));
 
     }
 
-    // ---- getMyJobPosting() method testing ----
+    // ---- getAllJobs() method testing ----
 
     @Test
-    @DisplayName("Should return a list of job postings when employer profile exists")
-    void getMyJobPosting_Success() {
+    @DisplayName("Admin should see all job postings regardless of owner")
+    void getAllJobs_Success() {
         // Arrange
-        when(userService.getUserByEmail(userEmail)).thenReturn(mockUser);
-        when(employerProfileRepository.findByUser(mockUser)).thenReturn(Optional.of(mockEmployer));
-        when(jobPostingRepository.findByEmployer(mockEmployer)).thenReturn(List.of(mockJob));
+        when(jobPostingRepository.findAll()).thenReturn(List.of(mockJob));
 
         // Act
-        List<JobPostingResponse> responses = jobPostingService.getMyJobPosting(userEmail);
+        List<JobPostingResponse> responses = jobPostingService.getAllJobs();
 
         // Assert
         assertNotNull(responses);
         assertEquals(1,responses.size());
         assertEquals(mockJob.getId(),responses.getFirst().getId());
         assertEquals(mockJob.getTitle(),responses.getFirst().getTitle());
-
-        // check that our repositories were called exactly one
-        verify(userService,times(1)).getUserByEmail(userEmail);
-        verify(employerProfileRepository,times(1)).findByUser(mockUser);
-        verify(jobPostingRepository,times(1)).findByEmployer(mockEmployer);
+        verify(jobPostingRepository,times(1)).findAll();
     }
 
-    @Test
-    @DisplayName("Should throw ResourceNotFoundException when employer profile does not exist")
-    void getMyJobPosting_ThrowsException_WhenProfileNotFound() {
-        // Arrange
-        when(userService.getUserByEmail(userEmail)).thenReturn(mockUser);
-        when(employerProfileRepository.findByUser(mockUser)).thenReturn(Optional.empty());
+    // ---- getJobById() method testing ----
 
-        // Act & Assert
-        assertThrows(ResourceNotFoundException.class, ()-> jobPostingService.getMyJobPosting(userEmail));
-        verify(jobPostingRepository,never()).findByEmployer(any(EmployerProfile.class));
-    }
-
-    // ---- getJobById_Success() method testing ----
     @Test
-    @DisplayName("Should return job response when valid ID is provided")
+    @DisplayName("Should return a job by id when provided")
     void getJobById_Success() {
         // Arrange
         when(jobPostingRepository.findById(100L)).thenReturn(Optional.of(mockJob));
@@ -214,14 +205,16 @@ public class JobPostingServiceTest {
         assertThrows(ResourceNotFoundException.class, ()->jobPostingService.getJobById(999L));
     }
 
+    // ---- updateJob() method testing (no ownership checks anymore) ----
 
     @Test
-    @DisplayName("Should successfully update job fields when requested by the owner")
+    @DisplayName("Should successfully update job fields — admin can update any job")
     void updateJob_Success() {
         // Arrange
         JobPostingRequest updateRequest = new JobPostingRequest(
                 "C# Developer",
                 "Looking for C# dev",
+                10L,
                 11L,
                 "skills in Web Development",
                 "Bachelor Degree in CS",
@@ -231,15 +224,17 @@ public class JobPostingServiceTest {
                 "Siemreap",
                 JobType.CONTRACT,
                 BigDecimal.valueOf(600),
-                BigDecimal.valueOf(1000)
+                BigDecimal.valueOf(1000),
+                null
         );
 
         when(jobPostingRepository.findById(100L)).thenReturn(Optional.of(mockJob));
+        when(companyProfileRepository.findById(10L)).thenReturn(Optional.of(mockCompany));
         when(jobCategoryRepository.findById(11L)).thenReturn(Optional.ofNullable(mockCategory));
         when(jobPostingRepository.save(any(JobPosting.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
         // Act
-        JobPostingResponse response = jobPostingService.updateJob(100L,updateRequest,userEmail);
+        JobPostingResponse response = jobPostingService.updateJob(100L,updateRequest);
 
         // Assert
         assertNotNull(response);
@@ -250,64 +245,57 @@ public class JobPostingServiceTest {
     }
 
     @Test
-    @DisplayName("Should throw UnauthorizedException when an unauthorized user attempts updating")
-    void updateJob_ThrowsException_WhenUnauthorized() {
+    @DisplayName("Should throw ResourceNotFoundException when updating a non-existing job")
+    void updateJob_ThrowsException_WhenJobNotFound() {
         // Arrange
-        JobPostingRequest updateRequest = new JobPostingRequest(
-                "Hacker Title",
-                "Desc",
-                111L,
-                "requirements",
-                "qualification",
-                "benefits",
-                ExperienceLevel.ENTRY,
-                null,
-                "Loc",
-                JobType.FULL_TIME,
-                BigDecimal.valueOf(500),
-                BigDecimal.valueOf(700)
-        );
-
-        when(jobPostingRepository.findById(100L)).thenReturn(Optional.of(mockJob));
+        when(jobPostingRepository.findById(999L)).thenReturn(Optional.empty());
 
         // Act & Assert
-        assertThrows(UnauthorizedException.class, ()-> jobPostingService.updateJob(100L,updateRequest,"hack@example.com"));
+        assertThrows(ResourceNotFoundException.class,
+                () -> jobPostingService.updateJob(999L, sampleRequest()));
         verify(jobPostingRepository,never()).save(any(JobPosting.class));
     }
 
+    // ---- deleteJob() method testing ----
+
     @Test
-    @DisplayName("Should delete job successfully if authorized")
+    @DisplayName("Should delete job successfully as admin")
     void deleteJob_Success() {
         // Arrange
         when(jobPostingRepository.findById(100L)).thenReturn(Optional.of(mockJob));
 
         // Act & Assert
-        assertDoesNotThrow(()-> jobPostingService.deleteJob(100L,userEmail));
+        assertDoesNotThrow(()-> jobPostingService.deleteJob(100L));
         verify(jobPostingRepository,times(1)).delete(mockJob);
     }
 
     @Test
-    @DisplayName("Should throw UnauthorizedException when deleting someone else's job")
-    void deleteJob_ThrowsException_WhenUnauthorized() {
+    @DisplayName("Should throw ResourceNotFoundException when deleting a non-existing job")
+    void deleteJob_ThrowsException_WhenJobNotFound() {
         // Arrange
-        when(jobPostingRepository.findById(100L)).thenReturn(Optional.of(mockJob));
+        when(jobPostingRepository.findById(999L)).thenReturn(Optional.empty());
+
         // Act & Assert
-        assertThrows(UnauthorizedException.class, ()->jobPostingService.deleteJob(100L,"hack@example.com"));
-        verify(jobPostingRepository, never()).delete(mockJob);
+        assertThrows(ResourceNotFoundException.class, ()->jobPostingService.deleteJob(999L));
+        verify(jobPostingRepository, never()).delete(any(JobPosting.class));
     }
 
+    // ---- pagination + search testing ----
+
     @Test
-    @DisplayName("Should return paginated open jobs")
+    @DisplayName("Should return paginated open JOB_BOARD jobs only")
     void getAllOpenJobsPaginated_Success() {
         // Arrange
         Pageable pageable = PageRequest.of(0,10);
         Page<JobPosting>  jobPostingPage = new PageImpl<>(List.of(mockJob));
-        when(jobPostingRepository.findByJobStatus(JobStatus.OPEN,pageable)).thenReturn(jobPostingPage);
+        when(jobPostingRepository.findByJobStatusAndRecruitmentModel(
+                JobStatus.OPEN, RecruitmentModel.JOB_BOARD, pageable)).thenReturn(jobPostingPage);
         // Act
         PageResponse<JobPostingResponse> response = jobPostingService.getAllOpenJobsPaginated(pageable);
         // Assert
         assertNotNull(response);
-        verify(jobPostingRepository,times(1)).findByJobStatus(JobStatus.OPEN,pageable);
+        verify(jobPostingRepository,times(1))
+                .findByJobStatusAndRecruitmentModel(JobStatus.OPEN, RecruitmentModel.JOB_BOARD, pageable);
 
     }
 
@@ -316,9 +304,9 @@ public class JobPostingServiceTest {
     void searchJobs_Success() {
         // Arrange
         Pageable pageable = PageRequest.of(0,10);
-        Page<JobPosting> emptyPage= new PageImpl<>(List.of(mockJob));
+        Page<JobPosting> page= new PageImpl<>(List.of(mockJob));
         when(jobCategoryRepository.findById(11L)).thenReturn(Optional.of(mockCategory));
-        when(jobPostingRepository.searchJobs("Java","Phnom Penh",JobType.FULL_TIME,mockCategory,ExperienceLevel.ENTRY,null,null,pageable)).thenReturn(emptyPage);
+        when(jobPostingRepository.searchJobs("Java","Phnom Penh",JobType.FULL_TIME,mockCategory,ExperienceLevel.ENTRY,null,null,pageable)).thenReturn(page);
         // Act
         PageResponse<JobPostingResponse> response = jobPostingService.searchJobs("Java","Phnom Penh",JobType.FULL_TIME,11L,ExperienceLevel.ENTRY,null,null,pageable);
         // Assert
@@ -328,7 +316,25 @@ public class JobPostingServiceTest {
     }
 
     @Test
-    @DisplayName("Should throw ResourceNotFoundException when category ID does not exist")
+    @DisplayName("Should search without category when categoryId is not provided")
+    void searchJobs_AllowsNullCategory() {
+        // Arrange
+        Pageable pageable = PageRequest.of(0,10);
+        Page<JobPosting> page = new PageImpl<>(List.of(mockJob));
+        when(jobPostingRepository.searchJobs(isNull(), isNull(), isNull(), isNull(),
+                isNull(), isNull(), isNull(), eq(pageable))).thenReturn(page);
+
+        // Act
+        PageResponse<JobPostingResponse> response =
+                jobPostingService.searchJobs(null, null, null, null, null, null, null, pageable);
+
+        // Assert
+        assertNotNull(response);
+        verify(jobCategoryRepository, never()).findById(any());
+    }
+
+    @Test
+    @DisplayName("Should throw ResourceNotFoundException when provided category ID does not exist")
     void searchJobs_ThrowsException_WhenCategoryNotFound() {
         // Arrange
         Pageable pageable = PageRequest.of(0, 10);
@@ -347,14 +353,16 @@ public class JobPostingServiceTest {
                 any(), any(), any(), any(), any(), any(),any(),any());
     }
 
+    // ---- closeJob() method testing ----
+
     @Test
-    @DisplayName("Should change Job Status to CLOSED when requested by authorized employer")
+    @DisplayName("Should change Job Status to CLOSED when requested by admin")
     void closeJob_Success() {
         when(jobPostingRepository.findById(100L)).thenReturn(Optional.of(mockJob));
         when(jobPostingRepository.save(any(JobPosting.class))).thenAnswer(
                 invocation -> invocation.getArgument(0));
 
-        JobPostingResponse response = jobPostingService.closeJob(100L,userEmail);
+        JobPostingResponse response = jobPostingService.closeJob(100L);
 
         assertNotNull(response);
         assertEquals(JobStatus.CLOSED,response.getJobStatus());
@@ -362,3 +370,5 @@ public class JobPostingServiceTest {
     }
 
 }
+
+

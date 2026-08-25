@@ -14,16 +14,15 @@ import java.util.List;
 @Repository
 public interface JobPostingRepository extends JpaRepository<JobPosting,Long> {
 
-    // Find all jobs by a specific employer
-    List<JobPosting> findByEmployer(EmployerProfile employer);
-
     @Query("""
-        SELECT COUNT(j) FROM JobPosting j WHERE j.employer = :employer AND j.jobStatus = 'OPEN'
+        SELECT COUNT(j) FROM JobPosting j
+        WHERE j.company = :company AND j.jobStatus = 'OPEN' AND j.recruitmentModel = 'JOB_BOARD'
 """)
-    Long countOpenJobsByEmployer(@Param("employer") EmployerProfile employer);
+    Long countOpenJobsByCompany(@Param("company") CompanyProfile company);
 
     @Query("""
-        SELECT COUNT(j) FROM JobPosting j WHERE j.category = :category AND j.jobStatus = 'OPEN'
+        SELECT COUNT(j) FROM JobPosting j
+        WHERE j.category = :category AND j.jobStatus = 'OPEN' AND j.recruitmentModel = 'JOB_BOARD'
 """)
     Long countOpenJobsByCategory(@Param("category") JobCategory category);
 
@@ -31,8 +30,9 @@ public interface JobPostingRepository extends JpaRepository<JobPosting,Long> {
 
     // With Pagination
 
-    // Paginated open jobs
-    Page<JobPosting> findByJobStatus(JobStatus jobStatus, Pageable pageable);
+    // Paginated public open jobs (only JOB_BOARD jobs are public)
+    Page<JobPosting> findByJobStatusAndRecruitmentModel(
+            JobStatus jobStatus, RecruitmentModel recruitmentModel, Pageable pageable);
 
     // Paginated job search
     @Query("""
@@ -46,6 +46,7 @@ public interface JobPostingRepository extends JpaRepository<JobPosting,Long> {
     AND (:minSalary IS NULL OR j.minSalary IS NULL OR j.minSalary = :minSalary)
     AND (:maxSalary IS NULL OR j.maxSalary IS NULL OR j.maxSalary = :maxSalary)
     AND j.jobStatus = 'OPEN'
+    AND j.recruitmentModel = 'JOB_BOARD'
     AND (j.deadline IS NULL OR j.deadline >= CURRENT_DATE)
 """)
     Page<JobPosting> searchJobs(

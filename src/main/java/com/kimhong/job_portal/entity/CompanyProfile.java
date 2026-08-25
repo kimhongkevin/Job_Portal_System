@@ -8,26 +8,21 @@ import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
 
+/**
+ * Company profile managed by ADMIN (no linked user account).
+ * The contactEmail field is critical — it is where candidate CV emails are sent.
+ */
 @Entity
-@Table(name="employer_profiles")
+@Table(name="company_profiles")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class EmployerProfile {
+public class CompanyProfile {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-
-    @OneToOne(cascade = {CascadeType.PERSIST,CascadeType.MERGE})
-    @JoinColumn(name = "user_id",nullable = false,unique = true)
-    private User user;
-
-    @OneToMany(mappedBy = "employer", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<JobPosting> jobPosting = new ArrayList<>();
 
     // Company's profile
 
@@ -55,13 +50,19 @@ public class EmployerProfile {
 
     private Integer foundedYear;
 
-    @Column(nullable = false)
     private String companyLogoUrl;
 
     private String facebookUrl;
     private String linkedinUrl;
 
     // End of company's profile
+
+    // HR contact info — CV emails are sent here when a seeker applies
+    @Column(nullable = false)
+    private String contactEmail;
+
+    // Name of the HR contact person, used in email greeting
+    private String contactPersonName;
 
     @CreationTimestamp
     private LocalDateTime createdAt;

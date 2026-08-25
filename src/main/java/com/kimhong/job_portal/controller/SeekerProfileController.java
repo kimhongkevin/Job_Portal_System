@@ -2,6 +2,7 @@ package com.kimhong.job_portal.controller;
 
 import com.kimhong.job_portal.dto.SeekerProfileRequest;
 import com.kimhong.job_portal.dto.SeekerProfileResponse;
+import com.kimhong.job_portal.dto.UpdateTalentPoolRequest;
 import com.kimhong.job_portal.service.SeekerProfileService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -61,5 +62,16 @@ public class SeekerProfileController {
             Authentication authentication
             ) {
         return ResponseEntity.ok(seekerProfileService.uploadResume(file, authentication.getName()));
+    }
+
+    @PatchMapping("/talent-pool")
+    @Operation(summary="Seeker opts in/out of the talent pool")
+    @PreAuthorize("hasRole('JOB_SEEKER')")
+    public ResponseEntity<SeekerProfileResponse> updateTalentPool(
+            @Valid @RequestBody UpdateTalentPoolRequest request,
+            Authentication authentication){
+
+        return ResponseEntity.ok(seekerProfileService.updateTalentPool(
+                request.getInTalentPool(), authentication.getName()));
     }
 }

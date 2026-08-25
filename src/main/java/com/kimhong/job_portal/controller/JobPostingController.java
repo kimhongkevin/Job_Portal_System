@@ -16,12 +16,12 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
 import java.util.List;
 
+// Admin manages ALL job postings — there is no employer ownership anymore.
 @RestController
 @RequestMapping("/api/jobs")
 @Tag(name = "Job Posting", description = "Job posting endpoint")
@@ -30,21 +30,12 @@ public class JobPostingController {
     private final JobPostingService jobPostingService;
 
     @PostMapping
-    @Operation(summary="Employer create new job posting")
-    @PreAuthorize("hasRole('EMPLOYER')")
+    @Operation(summary="Admin create new job posting for a company")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<JobPostingResponse> createJob(
-            @Valid @RequestBody JobPostingRequest request,
-            Authentication authentication){
+            @Valid @RequestBody JobPostingRequest request){
 
-        return ResponseEntity.ok(jobPostingService.createJob(request,authentication.getName()));
-    }
-
-    @GetMapping("/my")
-    @Operation(summary="Employer view their created job posting")
-    @PreAuthorize("hasRole('EMPLOYER')")
-    public ResponseEntity<List<JobPostingResponse>> getMyJobs(Authentication authentication){
-
-        return ResponseEntity.ok(jobPostingService.getMyJobPosting(authentication.getName()));
+        return ResponseEntity.ok(jobPostingService.createJob(request));
     }
 
     @GetMapping("/{id}")
@@ -55,24 +46,21 @@ public class JobPostingController {
     }
 
     @PutMapping("/{id}")
-    @Operation(summary="Employer update job posting info")
-    @PreAuthorize("hasRole('EMPLOYER')")
+    @Operation(summary="Admin update job posting info")
+    @PreAuthorize("hasRole('ADMIN')")
     public  ResponseEntity<JobPostingResponse> updateJob(
             @PathVariable Long id,
-            @Valid @RequestBody JobPostingRequest request,
-            Authentication authentication){
+            @Valid @RequestBody JobPostingRequest request){
 
-        return ResponseEntity.ok(jobPostingService.updateJob(id,request,authentication.getName()));
+        return ResponseEntity.ok(jobPostingService.updateJob(id,request));
     }
 
     @DeleteMapping("/{id}")
-    @Operation(summary="Employer delete job posting")
-    @PreAuthorize("hasRole('EMPLOYER')")
-    public ResponseEntity<Void> deleteJob(
-            @PathVariable Long id,
-            Authentication authentication){
+    @Operation(summary="Admin delete job posting")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Void> deleteJob(@PathVariable Long id){
 
-        jobPostingService.deleteJob(id, authentication.getName());
+        jobPostingService.deleteJob(id);
         return ResponseEntity.noContent().build();
     }
 
@@ -92,7 +80,7 @@ public class JobPostingController {
     }
 
     @GetMapping("/open/paged")
-    @Operation(summary="View all open jobs (everyone can access)")
+    @Operation(summary="View all open jobs — only JOB_BOARD jobs are public (everyone can access)")
     public ResponseEntity<PageResponse<JobPostingResponse>> getAllOpenJobsPaged(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
@@ -106,7 +94,7 @@ public class JobPostingController {
     }
 
     @GetMapping("/search/paged")
-    @Operation(summary="Search jobs by keyword,location,job type (everyone can access)")
+    @Operation(summary="Search jobs by keyword,location,job type — TALENT_POOL jobs excluded (everyone can access)")
     public ResponseEntity<PageResponse<JobPostingResponse>> searchJob(
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) String location,
@@ -127,12 +115,10 @@ public class JobPostingController {
     }
 
     @PatchMapping("/close/{id}")
-    @Operation(summary="Employer close job posting")
-    @PreAuthorize("hasRole('EMPLOYER')")
-    public ResponseEntity<JobPostingResponse> closeJob(
-            @PathVariable Long id,
-            Authentication authentication){
-        return ResponseEntity.ok(jobPostingService.closeJob(id,authentication.getName()));
+    @Operation(summary="Admin close job posting")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<JobPostingResponse> closeJob(@PathVariable Long id){
+        return ResponseEntity.ok(jobPostingService.closeJob(id));
     }
 
 }

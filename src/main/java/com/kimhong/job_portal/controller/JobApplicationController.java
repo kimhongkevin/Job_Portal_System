@@ -2,8 +2,6 @@ package com.kimhong.job_portal.controller;
 
 import com.kimhong.job_portal.dto.JobApplicationRequest;
 import com.kimhong.job_portal.dto.JobApplicationResponse;
-import com.kimhong.job_portal.dto.UpdateApplicationStatusRequest;
-import com.kimhong.job_portal.entity.ApplicationStatus;
 import com.kimhong.job_portal.service.JobApplicationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -16,6 +14,9 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+// Admin no longer manages applications:
+// applying automatically emails the CV to the company HR
+// and flips the status to SENT.
 @RestController
 @RequestMapping("/api/applications")
 @Tag(name = "Job Application", description = "Job application endpoint")
@@ -24,7 +25,9 @@ public class JobApplicationController {
     private final JobApplicationService jobApplicationService;
 
     @PostMapping
-    @Operation(summary = "Apply for a job")
+    @Operation(summary = "Apply for a job",
+            description = "Requires an uploaded resume. The CV (resume PDF) is emailed " +
+                    "automatically to the company HR contact.")
     @PreAuthorize("hasRole('JOB_SEEKER')")
     public ResponseEntity<JobApplicationResponse> applyToJob(
             @Valid @RequestBody JobApplicationRequest request,
@@ -34,51 +37,19 @@ public class JobApplicationController {
     }
 
     @GetMapping("/my")
-    @Operation(summary = "Seeker view their application")
+    @Operation(summary = "Seeker view their applications")
     @PreAuthorize("hasRole('JOB_SEEKER')")
-    public ResponseEntity<List<JobApplicationResponse>> getMyApplication(Authentication authentication){
-        return ResponseEntity.ok(jobApplicationService.getMyApplication(authentication.getName()));
-    }
-
-    @GetMapping("/job/{jobId}")
-    @Operation(summary = "Employer views all application for a specific job")
-    @PreAuthorize("hasRole('EMPLOYER')")
-    public ResponseEntity<List<JobApplicationResponse>> getApplicationForJob(
-            @PathVariable Long jobId,
-            Authentication authentication){
-
-        return ResponseEntity.ok(jobApplicationService.getApplicationForJob(jobId, authentication.getName()));
-    }
-
-    @PutMapping("/{applicationId}/status")
-    @Operation(summary = "Employer update status(e.g PENDING,REVIEWED,ACCEPTED,REJECTED) on any application")
-    @PreAuthorize("hasRole('EMPLOYER')")
-    public ResponseEntity<JobApplicationResponse> updateApplicationStatus(
-            @PathVariable Long applicationId,
-            @Valid @RequestBody UpdateApplicationStatusRequest request,
-            Authentication authentication){
-
-        return ResponseEntity.ok(jobApplicationService.updateApplicationStatus(applicationId,request,authentication.getName()));
+    public ResponseEntity<List<JobApplicationResponse>> getMyApplications(Authentication authentication){
+        return ResponseEntity.ok(jobApplicationService.getMyApplications(authentication.getName()));
     }
 
     @DeleteMapping("/{id}/withdraw")
-    @Operation(summary ="Seeker withdraw application in case application status is pending")
+    @Operation(summary ="Seeker withdraw application while it is still PENDING")
     @PreAuthorize("hasRole('JOB_SEEKER')")
     public ResponseEntity<Void> withdrawApplication(@PathVariable Long id,Authentication authentication){
         jobApplicationService.withdrawApplication(id, authentication.getName());
 
         return ResponseEntity.noContent().build();
-    }
-
-    @GetMapping("/job/{jobId}/filter")
-    @Operation(summary="Employer filter applications by status")
-    @PreAuthorize("hasRole('EMPLOYER')")
-    public ResponseEntity<List<JobApplicationResponse>> getApplicationByStatus(
-            @PathVariable Long jobId,
-            @RequestParam ApplicationStatus status,
-            Authentication authentication){
-
-        return ResponseEntity.ok(jobApplicationService.getApplicationByStatus(jobId,status, authentication.getName()));
     }
 
 }

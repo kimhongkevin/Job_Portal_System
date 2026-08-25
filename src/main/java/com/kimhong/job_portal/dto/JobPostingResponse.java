@@ -3,6 +3,7 @@ package com.kimhong.job_portal.dto;
 import com.kimhong.job_portal.entity.ExperienceLevel;
 import com.kimhong.job_portal.entity.JobStatus;
 import com.kimhong.job_portal.entity.JobType;
+import com.kimhong.job_portal.entity.RecruitmentModel;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -31,7 +32,8 @@ public class JobPostingResponse {
     private BigDecimal minSalary;
     private String salaryDisplay;
     private JobStatus jobStatus;
-    private Long employerId;
+    private RecruitmentModel recruitmentModel;
+    private Long companyId;
     private String companyName;
     private LocalDateTime createdAt;
 }

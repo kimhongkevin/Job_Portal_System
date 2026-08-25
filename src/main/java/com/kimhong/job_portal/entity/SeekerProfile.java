@@ -41,6 +41,10 @@ public class SeekerProfile {
 
     private String location;
 
+    // Opt-in flag for the admin talent pool search
+    @Builder.Default
+    private Boolean inTalentPool = false;
+
     @CreationTimestamp
     private LocalDateTime createdAt;
 

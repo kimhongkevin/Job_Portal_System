@@ -2,6 +2,7 @@ package com.kimhong.job_portal.dto;
 
 import com.kimhong.job_portal.entity.ExperienceLevel;
 import com.kimhong.job_portal.entity.JobType;
+import com.kimhong.job_portal.entity.RecruitmentModel;
 import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
@@ -23,6 +24,10 @@ public class JobPostingRequest {
     @NotBlank(message = "Job description is required")
     private String description;
 
+    // Admin posts the job directly for a company
+    @NotNull(message = "Company ID is required")
+    private Long companyId;
+
     private Long categoryId;
     private String requirement;
     private String qualification;
@@ -43,6 +48,9 @@ public class JobPostingRequest {
 
     @DecimalMin(value = "0.0",message = "Maximum salary cannot be negative")
     private BigDecimal maxSalary;
+
+    // Optional — defaults to JOB_BOARD when omitted
+    private RecruitmentModel recruitmentModel;
 
     @AssertTrue(message = "Maximum salary must be greater or equal to minimum salary")
     public boolean isSalaryRangeValid() {

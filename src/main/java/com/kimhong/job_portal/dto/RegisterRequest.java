@@ -1,9 +1,7 @@
 package com.kimhong.job_portal.dto;
 
-import com.kimhong.job_portal.entity.Role;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -24,6 +22,6 @@ public class RegisterRequest {
     @Size(min= 8,message = "Password must be at least 8 characters")
     private String password;
 
-    @NotNull(message = "Role is required")
-    private Role role;
+    // No role field — everyone self-registers as JOB_SEEKER.
+    // ADMIN accounts are created manually in the database.
 }

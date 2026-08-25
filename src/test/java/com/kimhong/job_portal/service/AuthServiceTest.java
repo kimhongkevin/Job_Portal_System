@@ -3,8 +3,10 @@ package com.kimhong.job_portal.service;
 import com.kimhong.job_portal.dto.AuthResponse;
 import com.kimhong.job_portal.dto.LoginRequest;
 import com.kimhong.job_portal.dto.RegisterRequest;
+import com.kimhong.job_portal.dto.ResetPasswordRequest;
 import com.kimhong.job_portal.entity.Role;
 import com.kimhong.job_portal.entity.User;
+import com.kimhong.job_portal.exception.BadRequestException;
 import com.kimhong.job_portal.exception.DuplicateResourceException;
 import com.kimhong.job_portal.exception.ResourceNotFoundException;
 import com.kimhong.job_portal.repository.UserRepository;
@@ -14,6 +16,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -21,10 +24,14 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
+
+import java.time.LocalDateTime;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.contains;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -66,15 +73,15 @@ public class AuthServiceTest {
     class RegisterTests {
 
         @Test
-        @DisplayName("Should successfully register a new user and send a welcome email")
+        @DisplayName("Should successfully register a new JOB_SEEKER and send a welcome email")
         void register_Success() {
-            // Arrange
-            RegisterRequest request = new RegisterRequest("John Doe", "john.doe@example.com", "password123", Role.JOB_SEEKER);
+            // Arrange — RegisterRequest has no role field anymore (Option B)
+            RegisterRequest request = new RegisterRequest("John Doe", "john.doe@example.com", "password123");
 
             when(userRepository.existsByEmail(request.getEmail())).thenReturn(false);
             when(passwordEncoder.encode(request.getPassword())).thenReturn("encodedPassword123");
             when(userRepository.save(any(User.class))).thenReturn(sampleUser);
-            when(jwtUtil.generateToken(request.getEmail(), request.getRole().name())).thenReturn(mockToken);
+            when(jwtUtil.generateToken(anyString(), anyString())).thenReturn(mockToken);
 
             // Act
             AuthResponse response = authService.register(request);
@@ -84,8 +91,11 @@ public class AuthServiceTest {
             assertEquals(mockToken, response.getToken());
             assertEquals(request.getEmail(), response.getEmail());
 
-            verify(userRepository, times(1)).save(any(User.class));
-            // Verify that the welcome email notification triggered successfully
+            ArgumentCaptor<User> userCaptor = ArgumentCaptor.forClass(User.class);
+            verify(userRepository, times(1)).save(userCaptor.capture());
+            // Self-registration always creates a JOB_SEEKER account
+            assertEquals(Role.JOB_SEEKER, userCaptor.getValue().getRole());
+
             verify(emailService, times(1)).sendWelcomeEmail(sampleUser.getEmail(), sampleUser.getFullName());
         }
 
@@ -93,7 +103,7 @@ public class AuthServiceTest {
         @DisplayName("Should throw DuplicateResourceException and never send an email if user exists")
         void register_ThrowsException_WhenEmailExists() {
             // Arrange
-            RegisterRequest request = new RegisterRequest("John Doe", "john.doe@example.com", "password123", Role.JOB_SEEKER);
+            RegisterRequest request = new RegisterRequest("John Doe", "john.doe@example.com", "password123");
             when(userRepository.existsByEmail(request.getEmail())).thenReturn(true);
 
             // Act & Assert
@@ -149,6 +159,92 @@ public class AuthServiceTest {
             when(userRepository.findByEmail(request.getEmail())).thenReturn(Optional.empty());
 
             assertThrows(ResourceNotFoundException.class, () -> authService.login(request));
+        }
+    }
+
+    @Nested
+    @DisplayName("Forgot Password Method Tests")
+    class ForgotPasswordTests {
+
+        @Test
+        @DisplayName("Should generate token with 15 minute expiry and send reset email")
+        void forgotPassword_Success() {
+            when(userRepository.findByEmail(sampleUser.getEmail())).thenReturn(Optional.of(sampleUser));
+            when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
+
+            authService.forgotPassword(sampleUser.getEmail());
+
+            ArgumentCaptor<User> captor = ArgumentCaptor.forClass(User.class);
+            verify(userRepository).save(captor.capture());
+            User saved = captor.getValue();
+
+            assertNotNull(saved.getResetToken());
+            assertFalse(saved.getResetToken().isBlank());
+            assertNotNull(saved.getResetTokenExpiry());
+            assertTrue(saved.getResetTokenExpiry().isAfter(LocalDateTime.now().plusMinutes(14)));
+
+            verify(emailService, times(1)).sendPasswordResetEmail(
+                    eq(sampleUser.getEmail()), eq(sampleUser.getFullName()), contains(saved.getResetToken()));
+        }
+
+        @Test
+        @DisplayName("Should do nothing silently when email is unknown (no user enumeration)")
+        void forgotPassword_DoesNothing_WhenEmailUnknown() {
+            when(userRepository.findByEmail("ghost@example.com")).thenReturn(Optional.empty());
+
+            assertDoesNotThrow(() -> authService.forgotPassword("ghost@example.com"));
+            verify(userRepository, never()).save(any(User.class));
+            verify(emailService, never()).sendPasswordResetEmail(anyString(), anyString(), anyString());
+        }
+    }
+
+    @Nested
+    @DisplayName("Reset Password Method Tests")
+    class ResetPasswordTests {
+
+        @Test
+        @DisplayName("Should update password and clear the token on success")
+        void resetPassword_Success() {
+            sampleUser.setResetToken("valid-token");
+            sampleUser.setResetTokenExpiry(LocalDateTime.now().plusMinutes(10));
+
+            ResetPasswordRequest request = new ResetPasswordRequest("valid-token", "newPassword123");
+
+            when(userRepository.findByResetToken("valid-token")).thenReturn(Optional.of(sampleUser));
+            when(passwordEncoder.encode("newPassword123")).thenReturn("encodedNewPassword");
+            when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
+
+            assertDoesNotThrow(() -> authService.resetPassword(request));
+
+            assertEquals("encodedNewPassword", sampleUser.getPassword());
+            assertNull(sampleUser.getResetToken());
+            assertNull(sampleUser.getResetTokenExpiry());
+            verify(userRepository, times(1)).save(sampleUser);
+        }
+
+        @Test
+        @DisplayName("Should throw BadRequestException when token does not exist")
+        void resetPassword_ThrowsException_WhenTokenInvalid() {
+            when(userRepository.findByResetToken("bad-token")).thenReturn(Optional.empty());
+
+            ResetPasswordRequest request = new ResetPasswordRequest("bad-token", "newPassword123");
+
+            assertThrows(BadRequestException.class, () -> authService.resetPassword(request));
+            verify(userRepository, never()).save(any(User.class));
+        }
+
+        @Test
+        @DisplayName("Should throw BadRequestException when token is expired")
+        void resetPassword_ThrowsException_WhenTokenExpired() {
+            sampleUser.setResetToken("expired-token");
+            sampleUser.setResetTokenExpiry(LocalDateTime.now().minusMinutes(1));
+
+            when(userRepository.findByResetToken("expired-token")).thenReturn(Optional.of(sampleUser));
+
+            ResetPasswordRequest request = new ResetPasswordRequest("expired-token", "newPassword123");
+
+            assertThrows(BadRequestException.class, () -> authService.resetPassword(request));
+            verify(userRepository, never()).save(any(User.class));
         }
     }
 }

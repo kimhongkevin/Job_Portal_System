@@ -57,13 +57,19 @@ public class JobPosting {
     @Enumerated(EnumType.STRING)
     private JobStatus jobStatus = JobStatus.OPEN;
 
+    // JOB_BOARD = public & applyable, TALENT_POOL = hidden from public, admin nominates
+    @Builder.Default
+    @Enumerated(EnumType.STRING)
+    private RecruitmentModel recruitmentModel = RecruitmentModel.JOB_BOARD;
+
     @ManyToOne
     @JoinColumn(name = "category_id")
     private JobCategory category;
 
+    // Company this posting belongs to (managed by admin)
     @ManyToOne
-    @JoinColumn(name = "employer_id")
-    private EmployerProfile employer;
+    @JoinColumn(name = "company_id")
+    private CompanyProfile company;
 
     @CreationTimestamp
     private LocalDateTime createdAt;

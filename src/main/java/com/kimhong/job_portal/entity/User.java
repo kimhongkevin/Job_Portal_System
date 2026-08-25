@@ -27,6 +27,10 @@ public class User {
     @Enumerated(EnumType.STRING)
     private Role role;
 
+    // Password reset (forgot-password / reset-password flow)
+    private String resetToken;
+    private LocalDateTime resetTokenExpiry;
+
     @CreationTimestamp
     private LocalDateTime createdAt;
 

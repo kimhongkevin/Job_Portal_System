@@ -17,5 +17,6 @@ public class SeekerProfileResponse {
     private String location;
     private String userEmail;
     private String resumeUrl;
+    private Boolean inTalentPool;
     private LocalDateTime createdAt;
 }

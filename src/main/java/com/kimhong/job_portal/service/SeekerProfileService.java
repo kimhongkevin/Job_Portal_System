@@ -4,6 +4,7 @@ import com.kimhong.job_portal.dto.SeekerProfileRequest;
 import com.kimhong.job_portal.dto.SeekerProfileResponse;
 import com.kimhong.job_portal.entity.SeekerProfile;
 import com.kimhong.job_portal.entity.User;
+import com.kimhong.job_portal.exception.BadRequestException;
 import com.kimhong.job_portal.exception.DuplicateResourceException;
 import com.kimhong.job_portal.exception.ResourceNotFoundException;
 import com.kimhong.job_portal.repository.SeekerProfileRepository;
@@ -12,6 +13,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Locale;
 
 @Service
 @RequiredArgsConstructor
@@ -30,6 +34,7 @@ public class SeekerProfileService {
                 profile.getLocation(),
                 profile.getUser().getEmail(),
                 profile.getResumeUrl(),
+                profile.getInTalentPool(),
                 profile.getCreatedAt()
         );
     }
@@ -95,6 +100,49 @@ public class SeekerProfileService {
         profile.setResumeUrl(fileUrl);
 
         return mapToSeekerProfileResponse(seekerProfileRepository.save(profile));
+    }
+
+    // Seeker opts in/out of the admin talent pool
+    public SeekerProfileResponse updateTalentPool(Boolean inTalentPool, String email){
+        if(inTalentPool == null)
+            throw new BadRequestException("inTalentPool is required");
+
+        User user = userService.getUserByEmail(email);
+        SeekerProfile profile = seekerProfileRepository.findByUser(user)
+                .orElseThrow(()-> new ResourceNotFoundException("User's profile not found."));
+
+        profile.setInTalentPool(inTalentPool);
+
+        return mapToSeekerProfileResponse(seekerProfileRepository.save(profile));
+    }
+
+    // Admin talent pool search: students with inTalentPool = true,
+    // optionally filtered by skills (comma separated, case-insensitive).
+    // available=true additionally requires an uploaded resume.
+    public List<SeekerProfileResponse> searchTalentPool(String skills, Boolean available){
+        List<SeekerProfile> pool = seekerProfileRepository.findByInTalentPoolTrue();
+
+        List<String> skillKeywords = skills == null || skills.isBlank()
+                ? List.of()
+                : Arrays.stream(skills.split(","))
+                    .map(String::trim)
+                    .filter(s -> !s.isEmpty())
+                    .map(s -> s.toLowerCase(Locale.ROOT))
+                    .toList();
+
+        return pool.stream()
+                .filter(profile -> {
+                    if(skillKeywords.isEmpty())
+                        return true;
+                    String candidateSkills = profile.getSkills() == null
+                            ? ""
+                            : profile.getSkills().toLowerCase(Locale.ROOT);
+                    return skillKeywords.stream().anyMatch(candidateSkills::contains);
+                })
+                .filter(profile -> available == null
+                        || !available
+                        || (profile.getResumeUrl() != null && !profile.getResumeUrl().isBlank()))
+                .map(this::mapToSeekerProfileResponse).toList();
     }
 
 

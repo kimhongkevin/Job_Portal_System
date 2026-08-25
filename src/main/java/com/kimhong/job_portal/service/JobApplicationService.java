@@ -2,7 +2,6 @@ package com.kimhong.job_portal.service;
 
 import com.kimhong.job_portal.dto.JobApplicationRequest;
 import com.kimhong.job_portal.dto.JobApplicationResponse;
-import com.kimhong.job_portal.dto.UpdateApplicationStatusRequest;
 import com.kimhong.job_portal.entity.*;
 import com.kimhong.job_portal.exception.BadRequestException;
 import com.kimhong.job_portal.exception.DuplicateResourceException;
@@ -30,7 +29,7 @@ public class JobApplicationService {
                 application.getId(),
                 application.getJob().getId(),
                 application.getJob().getTitle(),
-                application.getJob().getEmployer().getCompanyName(),
+                application.getJob().getCompany().getCompanyName(),
                 application.getSeeker().getId(),
                 application.getSeeker().getUser().getEmail(),
                 application.getStatus(),
@@ -39,10 +38,23 @@ public class JobApplicationService {
         );
     }
 
+    // Automatic flow:
+    // 1. Validate seeker profile + uploaded resume
+    // 2. Validate job is OPEN and not already applied
+    // 3. Save application (PENDING)
+    // 4. Email the CV (resume PDF attached) to company HR (contactEmail)
+    // 5. On success -> status becomes SENT automatically
+    //    On failure -> status stays PENDING (can be retried)
+    // 6. Send confirmation email to the seeker
     public JobApplicationResponse applyToJob(JobApplicationRequest request,String email){
         User user = userService.getUserByEmail(email);
         SeekerProfile profile = seekerProfileRepository.findByUser(user)
                 .orElseThrow(() -> new ResourceNotFoundException("User's profile not found, please create your profile first"));
+
+        // Resume is mandatory — it is attached to the CV email sent to the company HR
+        if(profile.getResumeUrl() == null || profile.getResumeUrl().isBlank())
+            throw new BadRequestException("Please upload your resume before applying");
+
         JobPosting job = jobPostingRepository.findById(request.getJobId())
                 .orElseThrow(() -> new ResourceNotFoundException("Job not found."));
         if(job.getJobStatus() != JobStatus.OPEN)
@@ -51,24 +63,42 @@ public class JobApplicationService {
         if(jobApplicationRepository.existsBySeekerAndJob(profile,job))
             throw new DuplicateResourceException("Already applied to this job.");
 
-        JobApplication application = JobApplication.builder()
+        CompanyProfile company = job.getCompany();
+
+        // Save as PENDING first; flips to SENT once the CV email is delivered
+        JobApplication saved = jobApplicationRepository.save(JobApplication.builder()
                         .seeker(profile)
                         .job(job)
                         .status(ApplicationStatus.PENDING)
                         .coverLetter(request.getCoverLetter())
-                        .build();
-        JobApplication saved = jobApplicationRepository.save(application);
+                        .build());
 
-        emailService.sendApplicationConfirmation(
+        boolean cvDelivered = emailService.sendCVToCompanyHR(
+                company.getContactEmail(),
+                null, // optional CC — could be an admin notification address
+                profile.getUser().getFullName(),
+                profile.getUser().getEmail(),
+                job.getTitle(),
+                company.getCompanyName(),
+                profile.getResumeUrl(),
+                request.getCoverLetter());
+
+        if(cvDelivered){
+            saved.setStatus(ApplicationStatus.SENT); // automatic — no manual trigger needed
+            saved = jobApplicationRepository.save(saved);
+        }
+
+        emailService.sendCVSentConfirmation(
                 profile.getUser().getEmail(),
                 profile.getUser().getFullName(),
                 job.getTitle(),
-                job.getEmployer().getCompanyName());
+                company.getCompanyName(),
+                company.getContactEmail());
 
         return mapToJobApplicationResponse(saved);
     }
 
-    public List<JobApplicationResponse> getMyApplication(String email){
+    public List<JobApplicationResponse> getMyApplications(String email){
         User user = userService.getUserByEmail(email);
         SeekerProfile profile = seekerProfileRepository.findByUser(user)
                 .orElseThrow(() -> new ResourceNotFoundException("User's profile not found, please create your profile first"));
@@ -77,43 +107,8 @@ public class JobApplicationService {
                 .map(this::mapToJobApplicationResponse).toList();
     }
 
-    // Employer views all application for a specific job
-    public List<JobApplicationResponse> getApplicationForJob(Long jobId,String email){
-       JobPosting job = jobPostingRepository.findById(jobId)
-               .orElseThrow(() -> new ResourceNotFoundException("Job not found"));
-       if(!job.getEmployer().getUser().getEmail().equals(email))
-           throw new UnauthorizedException("Unauthorized");
-
-       return jobApplicationRepository.findByJob(job).stream()
-               .map(this::mapToJobApplicationResponse).toList();
-    }
-
-    // Employer update application status
-    public JobApplicationResponse updateApplicationStatus(
-            Long applicationId,
-            UpdateApplicationStatusRequest request,
-            String email){
-
-        JobApplication application = jobApplicationRepository.findById(applicationId)
-                .orElseThrow(() -> new ResourceNotFoundException("Application not found"));
-
-        if(!application.getJob().getEmployer().getUser().getEmail().equals(email))
-            throw new UnauthorizedException("Unauthorized");
-
-        application.setStatus(request.getStatus());
-
-        JobApplication saved = jobApplicationRepository.save(application);
-        emailService.sendApplicationStatusUpdate(
-                application.getSeeker().getUser().getEmail(),
-                application.getSeeker().getUser().getFullName(),
-                application.getJob().getTitle(),
-                request.getStatus()
-        );
-
-        return mapToJobApplicationResponse(saved);
-    }
-
-    // Seeker withdraws application (only if PENDING)
+    // Seeker withdraws application (only while still PENDING,
+    // i.e. when the CV email has not been delivered yet)
     public void withdrawApplication(Long applicationId,String email){
         JobApplication application = jobApplicationRepository.findById(applicationId)
                 .orElseThrow(() -> new ResourceNotFoundException("Application not found."));
@@ -122,21 +117,5 @@ public class JobApplicationService {
         if(application.getStatus() != ApplicationStatus.PENDING)
             throw new BadRequestException("Cannot withdraw application that is already being processed");
         jobApplicationRepository.delete(application);
-    }
-
-    // Employer filters application by status
-    public List<JobApplicationResponse> getApplicationByStatus(
-            Long jobId,
-            ApplicationStatus status,
-            String email){
-
-        JobPosting job = jobPostingRepository.findById(jobId)
-                .orElseThrow(() -> new ResourceNotFoundException("Job not found"));
-
-        if(!job.getEmployer().getUser().getEmail().equals(email))
-            throw new UnauthorizedException("Unauthorized");
-
-        return jobApplicationRepository.findByJobAndStatus(job,status).stream()
-                .map(this::mapToJobApplicationResponse).toList();
     }
 }
