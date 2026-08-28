@@ -25,6 +25,8 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.*;
@@ -47,17 +49,21 @@ class JobApplicationServiceTest {
     @Mock
     private EmailService emailService;
 
+    @Mock
+    private SupabaseStorageService supabaseStorageService;
+
     @InjectMocks
     private JobApplicationService jobApplicationService;
 
     private User seekerUser;
     private SeekerProfile mockSeekerProfile;
-    private CompanyProfile mockCompanyProfile;
     private JobPosting mockJob;
     private JobApplication mockApplication;
 
     private final String seekerEmail = "seeker@example.com";
     private final String hrEmail = "hr@techcorp.com";
+    private final String rawResumeUrl = "https://supabase.co/storage/v1/object/public/resumes/resume.pdf";
+    private final String signedResumeUrl = "https://supabase.co/storage/v1/object/sign/resumes/resume.pdf?token=abc";
 
     @BeforeEach
     void setUp() {
@@ -68,9 +74,9 @@ class JobApplicationServiceTest {
         mockSeekerProfile = new SeekerProfile();
         mockSeekerProfile.setId(1L);
         mockSeekerProfile.setUser(seekerUser);
-        mockSeekerProfile.setResumeUrl("uploads/resumes/resume.pdf");
+        mockSeekerProfile.setResumeUrl(rawResumeUrl);
 
-        mockCompanyProfile = new CompanyProfile();
+        CompanyProfile mockCompanyProfile = new CompanyProfile();
         mockCompanyProfile.setId(5L);
         mockCompanyProfile.setCompanyName("Tech Corp");
         mockCompanyProfile.setContactEmail(hrEmail);
@@ -105,12 +111,13 @@ class JobApplicationServiceTest {
     class ApplyToJobTests {
 
         @Test
-        @DisplayName("Should apply, email the CV to company HR, and set status to SENT automatically")
+        @DisplayName("Should apply, email the signed CV URL to company HR, and set status to SENT automatically")
         void applyToJob_SendsCVEmail_Success() {
-            // Arrange
             stubHappyPath();
-            // Record the status at each save() call — save returns the same
-            // mutable instance, so we snapshot the status as it happens
+
+            when(supabaseStorageService.extractFileName(rawResumeUrl)).thenReturn("resume.pdf");
+            when(supabaseStorageService.getSignedUrl(eq("resumes"), eq("resume.pdf"), anyInt())).thenReturn(signedResumeUrl);
+
             List<ApplicationStatus> statusAtSave = new ArrayList<>();
             when(jobApplicationRepository.save(any(JobApplication.class)))
                     .thenAnswer(inv -> {
@@ -118,30 +125,27 @@ class JobApplicationServiceTest {
                         statusAtSave.add(app.getStatus());
                         return app;
                     });
+
             when(emailService.sendCVToCompanyHR(
                     eq(hrEmail), isNull(), eq("Jane Doe"), eq(seekerEmail),
                     eq("Backend Engineer"), eq("Tech Corp"),
-                    eq("uploads/resumes/resume.pdf"), eq("Here is my pitch")))
+                    eq(signedResumeUrl), eq("Here is my pitch")))
                     .thenReturn(true);
 
-            // Act
             JobApplicationResponse response = jobApplicationService.applyToJob(
                     new JobApplicationRequest(100L, "Here is my pitch"), seekerEmail);
 
-            // Assert — status flipped to SENT automatically, no admin involved
             assertNotNull(response);
             assertEquals(ApplicationStatus.SENT, response.getStatus());
 
             verify(emailService, times(1)).sendCVToCompanyHR(
                     eq(hrEmail), isNull(), eq("Jane Doe"), eq(seekerEmail),
                     eq("Backend Engineer"), eq("Tech Corp"),
-                    eq("uploads/resumes/resume.pdf"), eq("Here is my pitch"));
+                    eq(signedResumeUrl), eq("Here is my pitch"));
 
-            // Seeker confirmation includes the HR address it was sent to
             verify(emailService, times(1)).sendCVSentConfirmation(
                     seekerEmail, "Jane Doe", "Backend Engineer", "Tech Corp", hrEmail);
 
-            // First save = PENDING, second save = SENT
             verify(jobApplicationRepository, times(2)).save(any(JobApplication.class));
             assertEquals(List.of(ApplicationStatus.PENDING, ApplicationStatus.SENT), statusAtSave);
         }
@@ -149,8 +153,11 @@ class JobApplicationServiceTest {
         @Test
         @DisplayName("Should keep status PENDING when the CV email fails to send")
         void applyToJob_StatusStaysPending_WhenEmailFails() {
-            // Arrange
             stubHappyPath();
+
+            when(supabaseStorageService.extractFileName(rawResumeUrl)).thenReturn("resume.pdf");
+            when(supabaseStorageService.getSignedUrl(eq("resumes"), eq("resume.pdf"), anyInt())).thenReturn(signedResumeUrl);
+
             when(jobApplicationRepository.save(any(JobApplication.class)))
                     .thenAnswer(inv -> inv.getArgument(0));
             when(emailService.sendCVToCompanyHR(
@@ -158,11 +165,9 @@ class JobApplicationServiceTest {
                     anyString(), anyString(), anyString(), any()))
                     .thenReturn(false);
 
-            // Act
             JobApplicationResponse response = jobApplicationService.applyToJob(
                     new JobApplicationRequest(100L, "Here is my pitch"), seekerEmail);
 
-            // Assert — stays PENDING so it can be retried later
             assertNotNull(response);
             assertEquals(ApplicationStatus.PENDING, response.getStatus());
             verify(jobApplicationRepository, times(1)).save(any(JobApplication.class));
@@ -171,12 +176,10 @@ class JobApplicationServiceTest {
         @Test
         @DisplayName("Should throw BadRequestException when seeker has no uploaded resume")
         void applyToJob_ThrowsException_WhenNoResume() {
-            // Arrange
             mockSeekerProfile.setResumeUrl(null);
             when(userService.getUserByEmail(seekerEmail)).thenReturn(seekerUser);
             when(seekerProfileRepository.findByUser(seekerUser)).thenReturn(Optional.of(mockSeekerProfile));
 
-            // Act & Assert
             BadRequestException ex = assertThrows(BadRequestException.class,
                     () -> jobApplicationService.applyToJob(
                             new JobApplicationRequest(100L, "Pitch"), seekerEmail));
@@ -275,4 +278,3 @@ class JobApplicationServiceTest {
         }
     }
 }
-

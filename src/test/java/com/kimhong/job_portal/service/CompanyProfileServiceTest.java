@@ -34,7 +34,7 @@ public class CompanyProfileServiceTest {
     private JobPostingRepository jobPostingRepository;
 
     @Mock
-    private FileStorageService fileStorageService;
+    private SupabaseStorageService supabaseStorageService;
 
     @InjectMocks
     private CompanyProfileService companyProfileService;
@@ -140,7 +140,7 @@ public class CompanyProfileServiceTest {
         String newLogoUrl = "uploads/images/abc123.png";
 
         when(companyProfileRepository.findById(10L)).thenReturn(Optional.of(mockCompany));
-        when(fileStorageService.storeImage(mockImage)).thenReturn(newLogoUrl);
+        when(supabaseStorageService.uploadLogo(mockImage)).thenReturn(newLogoUrl);
         when(companyProfileRepository.save(any(CompanyProfile.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -150,8 +150,8 @@ public class CompanyProfileServiceTest {
         // Assert
         assertNotNull(response);
         assertEquals(newLogoUrl, response.getCompanyLogoUrl());
-        verify(fileStorageService, times(1)).storeImage(mockImage);
-        verify(fileStorageService, never()).deleteFile(any()); // no old logo to delete
+        verify(supabaseStorageService, times(1)).uploadLogo(mockImage);
+        verify(supabaseStorageService, never()).deleteFile(anyString(),anyString());
         verify(companyProfileRepository, times(1)).save(any());
     }
 
@@ -166,7 +166,7 @@ public class CompanyProfileServiceTest {
         String newLogoUrl = "uploads/images/new-logo.png";
 
         when(companyProfileRepository.findById(10L)).thenReturn(Optional.of(mockCompany));
-        when(fileStorageService.storeImage(mockImage)).thenReturn(newLogoUrl);
+        when(supabaseStorageService.uploadLogo(mockImage)).thenReturn(newLogoUrl);
         when(companyProfileRepository.save(any(CompanyProfile.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -176,8 +176,8 @@ public class CompanyProfileServiceTest {
         // Assert
         assertNotNull(response);
         assertEquals(newLogoUrl, response.getCompanyLogoUrl());
-        verify(fileStorageService, times(1)).deleteFile(oldLogoUrl); // old logo deleted ✅
-        verify(fileStorageService, times(1)).storeImage(mockImage);
+        verify(supabaseStorageService, times(1)).deleteFile(oldLogoUrl,"logos"); // old logo deleted ✅
+        verify(supabaseStorageService, times(1)).uploadLogo(mockImage);
     }
 
     @Test
@@ -190,7 +190,7 @@ public class CompanyProfileServiceTest {
         // Act & Assert
         assertThrows(ResourceNotFoundException.class,
                 () -> companyProfileService.uploadCompanyLogo(999L, mockImage));
-        verify(fileStorageService, never()).storeImage(any());
+        verify(supabaseStorageService, never()).uploadLogo(any());
     }
 
     // ─── getAllCompanies tests ────────────────────────────

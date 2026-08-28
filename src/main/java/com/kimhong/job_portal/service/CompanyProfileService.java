@@ -20,7 +20,9 @@ import java.util.List;
 public class CompanyProfileService {
     private final CompanyProfileRepository companyProfileRepository;
     private final JobPostingRepository jobPostingRepository;
-    private final FileStorageService fileStorageService;
+    private final SupabaseStorageService supabaseStorageService;
+
+
 
     private CompanyProfileResponse mapToCompanyResponse(CompanyProfile profile){
         return  new CompanyProfileResponse(
@@ -131,9 +133,9 @@ public class CompanyProfileService {
         CompanyProfile profile = companyProfileRepository.findById(id)
                 .orElseThrow(()-> new ResourceNotFoundException("Company not found."));
         if(profile.getCompanyLogoUrl() != null)
-            fileStorageService.deleteFile(profile.getCompanyLogoUrl());
+            supabaseStorageService.deleteFile(profile.getCompanyLogoUrl(),"logos");
 
-        String imageUrl = fileStorageService.storeImage(image);
+        String imageUrl = supabaseStorageService.uploadLogo(image);
 
         profile.setCompanyLogoUrl(imageUrl);
 

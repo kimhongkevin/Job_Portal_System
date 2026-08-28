@@ -22,8 +22,8 @@ jwt:
 
 file:
   uploads:
-    upload-resume: uploads/resumes
-    upload-image: uploads/images
+
+
 
 springdoc:
   swagger-ui:

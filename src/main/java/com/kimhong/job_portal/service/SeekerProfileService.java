@@ -12,7 +12,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
@@ -22,7 +21,7 @@ import java.util.Locale;
 public class SeekerProfileService {
     private final SeekerProfileRepository seekerProfileRepository;
     private final UserService userService;
-    private final FileStorageService fileStorageService;
+    private final SupabaseStorageService supabaseStorageService;
 
     private SeekerProfileResponse mapToSeekerProfileResponse(SeekerProfile profile){
         return new SeekerProfileResponse(
@@ -93,9 +92,9 @@ public class SeekerProfileService {
                 .orElseThrow(()-> new ResourceNotFoundException("Please create profile first"));
 
         if(profile.getResumeUrl() != null && !profile.getResumeUrl().isBlank())
-            fileStorageService.deleteFile(profile.getResumeUrl());
+            supabaseStorageService.deleteFile(profile.getResumeUrl(),"resumes");
 
-        String fileUrl = fileStorageService.storeResume(file);
+        String fileUrl = supabaseStorageService.uploadResume(file);
 
         profile.setResumeUrl(fileUrl);
 

@@ -39,8 +39,7 @@ services:
     depends_on:
       db:
         condition: service_healthy
-    volumes:
-      - upload_data:/app/uploads/resumes
+
 
 volumes:
   postgres_data:

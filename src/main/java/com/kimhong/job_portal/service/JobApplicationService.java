@@ -23,6 +23,7 @@ public class JobApplicationService {
     private final JobPostingRepository jobPostingRepository;
     private final UserService userService;
     private final EmailService emailService;
+    private final SupabaseStorageService supabaseStorageService;
 
     private JobApplicationResponse mapToJobApplicationResponse(JobApplication application){
         return new JobApplicationResponse(
@@ -73,6 +74,12 @@ public class JobApplicationService {
                         .coverLetter(request.getCoverLetter())
                         .build());
 
+        String fileName = supabaseStorageService.extractFileName(profile.getResumeUrl());
+        String signedResumeUrl = supabaseStorageService.getSignedUrl("resumes",fileName,3600);
+
+        // Fallback to original URL if signed URL generation fails
+        String finalResumeUrl = (signedResumeUrl != null) ? signedResumeUrl : profile.getResumeUrl();
+
         boolean cvDelivered = emailService.sendCVToCompanyHR(
                 company.getContactEmail(),
                 null, // optional CC — could be an admin notification address
@@ -80,11 +87,11 @@ public class JobApplicationService {
                 profile.getUser().getEmail(),
                 job.getTitle(),
                 company.getCompanyName(),
-                profile.getResumeUrl(),
+                finalResumeUrl,
                 request.getCoverLetter());
 
         if(cvDelivered){
-            saved.setStatus(ApplicationStatus.SENT); // automatic — no manual trigger needed
+            saved.setStatus(ApplicationStatus.SENT);
             saved = jobApplicationRepository.save(saved);
         }
 

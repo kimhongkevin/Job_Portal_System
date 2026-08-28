@@ -10,9 +10,6 @@ import org.springframework.stereotype.Service;
 
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 
 @Service
 @RequiredArgsConstructor
@@ -22,7 +19,7 @@ public class EmailService {
     @Value("${spring.mail.username}")
     private String fromEmail;
 
-    private void sendEmail(String to,String subject,String body){
+    private void sendEmail(String to, String subject, String body){
         try {
             SimpleMailMessage message = new SimpleMailMessage();
             message.setFrom(fromEmail);
@@ -36,10 +33,10 @@ public class EmailService {
         }
     }
 
-    public void sendWelcomeEmail(String to,String fullName){
+    public void sendWelcomeEmail(String to, String fullName){
         sendEmail(to,
                 "Welcome to Job Portal!",
-                "Dear "+ fullName +", welcome to Job Portal...");
+                "Dear " + fullName + ", welcome to Job Portal...");
     }
 
     public boolean sendCVToCompanyHR(String hrEmail,
@@ -48,11 +45,10 @@ public class EmailService {
                                      String seekerEmail,
                                      String jobTitle,
                                      String companyName,
-                                     String resumeFilePath,
+                                     String resumeUrl,
                                      String coverLetter){
         try {
             MimeMessage message = mailSender.createMimeMessage();
-            // multipart = true -> required for attachments
             MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
 
             helper.setFrom(fromEmail);
@@ -72,17 +68,12 @@ public class EmailService {
                 body.append("Cover letter:\n").append(coverLetter).append("\n\n");
             }
 
-            body.append("The candidate's resume is attached to this email.\n\n");
+            if(resumeUrl != null && !resumeUrl.isBlank()){
+                body.append("Download Resume: ").append(resumeUrl).append("\n\n");
+            }
+
             body.append("Best regards,\nJob Portal System");
             helper.setText(body.toString());
-
-            // Attach the resume PDF from the stored upload path
-            if(resumeFilePath != null && !resumeFilePath.isBlank()){
-                Path resumePath = Paths.get(resumeFilePath);
-                if(Files.exists(resumePath)){
-                    helper.addAttachment(resumePath.getFileName().toString(), resumePath.toFile());
-                }
-            }
 
             mailSender.send(message);
             return true;
@@ -92,21 +83,20 @@ public class EmailService {
         }
     }
 
-    // Confirmation to the seeker so they know who received their CV
-    public void sendCVSentConfirmation(String seekerEmail,String seekerName,String jobTitle,String companyName,String hrEmail){
+    public void sendCVSentConfirmation(String seekerEmail, String seekerName, String jobTitle, String companyName, String hrEmail){
         sendEmail(seekerEmail,
-                "Your CV was sent - "+ jobTitle,
-                "Dear "+ seekerName +", your application for \""+ jobTitle
-                        +"\" has been sent to "+ companyName +" ("+ hrEmail +") successfully...");
+                "Your CV was sent - " + jobTitle,
+                "Dear " + seekerName + ", your application for \"" + jobTitle
+                        + "\" has been sent to " + companyName + " (" + hrEmail + ") successfully...");
     }
 
     public void sendPasswordResetEmail(String to, String fullName, String resetLink){
         sendEmail(to,
                 "Password reset request - Job Portal",
-                "Dear "+ fullName +",\n\n"
-                        +"We received a request to reset your password. "
-                        +"This link is valid for 15 minutes:\n"
-                        + resetLink +"\n\n"
-                        +"If you did not request a password reset, you can safely ignore this email.");
+                "Dear " + fullName + ",\n\n"
+                        + "We received a request to reset your password. "
+                        + "This link is valid for 15 minutes:\n"
+                        + resetLink + "\n\n"
+                        + "If you did not request a password reset, you can safely ignore this email.");
     }
 }
