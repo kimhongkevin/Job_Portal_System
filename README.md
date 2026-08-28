@@ -7,8 +7,9 @@ A full-featured Job Portal REST API built with Java Spring Boot. It serves **job
 
 ## 🚀 Live Demo
 
-Backend API:
-https://job-portal-system-01.onrender.com
+[//]: # (Backend API:)
+
+[//]: # (https://job-portal-system-01.onrender.com)
 
 Swagger UI
 https://job-portal-system-01.onrender.com//swagger-ui/index.html
@@ -70,20 +71,21 @@ https://job-portal-system-01.onrender.com//swagger-ui/index.html
 
 ## 🛠 Tech Stack
 
-| Category | Technology |
-|----------|------------|
-| Language | Java 21 |
-| Framework | Spring Boot 4 |
-| Security | Spring Security + JWT (jjwt) |
-| Database | PostgreSQL |
-| ORM | Spring Data JPA / Hibernate |
-| DB Migrations | Flyway |
-| Mail | Spring Boot Mail (SMTP + MIME attachments) |
-| Build Tool | Maven |
-| API Testing | Postman |
-| Documentation | Swagger/OpenAPI (springdoc) |
-| Containerization | Docker & Docker Compose |
-| Deployment | Render |
+| Category         | Technology                                 |
+|------------------|--------------------------------------------|
+| Language         | Java 21                                    |
+| Framework        | Spring Boot 4                              |
+| Security         | Spring Security + JWT (jjwt)               |
+| Database         | Supabase PostgreSQL                        |
+| Storage          | Supabase Storage                           |
+| ORM              | Spring Data JPA / Hibernate                |
+| DB Migrations    | Flyway                                     |
+| Mail             | Spring Boot Mail (SMTP + MIME attachments) |
+| Build Tool       | Maven                                      |
+| API Testing      | Postman                                    |
+| Documentation    | Swagger/OpenAPI (springdoc)                |
+| Containerization | Docker & Docker Compose                    |
+| Deployment       | Render                                     |
 
 ---
 
@@ -217,6 +219,15 @@ apply ──▶ PENDING ──(CV emailed successfully)──▶ SENT   ← auto
 | `PENDING` | Just applied — CV not sent yet |
 | `SENT` | CV successfully emailed to the company HR |
 | `REJECTED` | Invalid/spam application cleanup (rare, manual admin action) |
+
+---
+## 🗄️ Database & Storage
+
+```
+- PostgreSQL (hosted by Supabase)
+- Supabase Storage (CVs and company logos)
+
+```
 
 ---
 
