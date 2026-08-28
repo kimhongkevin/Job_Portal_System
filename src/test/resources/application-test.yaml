@@ -15,6 +15,17 @@ spring:
     enabled: true
     locations: classpath:db/migration
     clean-disabled: false
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: test@example.com
+    password: testpassword
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
 
 jwt:
   secret: test-secret
@@ -34,3 +45,14 @@ management:
     web:
       exposure:
         include: health,info
+  health:
+    mail:
+      enabled: false
+
+supabase:
+  url: https://mock.supabase.co
+  service-key: mock-service-key-for-ci
+  bucket:
+    resumes: resumes
+    logos: logos
+
