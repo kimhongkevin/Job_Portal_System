@@ -1,7 +1,6 @@
 package com.kimhong.job_portal.config;
 
 import com.kimhong.job_portal.security.JwtAuthFilter;
-import com.kimhong.job_portal.service.CustomUserDetailsService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -23,7 +22,6 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 @RequiredArgsConstructor
 public class SecurityConfig {
     private final JwtAuthFilter jwtAuthFilter;
-    private final CustomUserDetailsService userDetailsService;
 
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -72,7 +70,4 @@ public class SecurityConfig {
         return http.build();
 
     }
-
-
-
 }
