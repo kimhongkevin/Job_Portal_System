@@ -64,8 +64,6 @@ https://job-portal-system-01.onrender.com//swagger-ui/index.html
 - GitHub Actions CI
 - Automatic Maven build
 - Automatic JUnit test execution
-- Docker support
-- Render deployment
 
 ---
 
@@ -84,7 +82,6 @@ https://job-portal-system-01.onrender.com//swagger-ui/index.html
 | Build Tool       | Maven                                      |
 | API Testing      | Postman                                    |
 | Documentation    | Swagger/OpenAPI (springdoc)                |
-| Containerization | Docker & Docker Compose                    |
 | Deployment       | Render                                     |
 
 ---
@@ -119,7 +116,8 @@ git clone https://github.com/kimhongkevin/Job_Portal_System.git
 
 cd Job_Portal_System
 
-docker-compose up --build
+cd src/main/JobPortalApplication → Run
+
 ```
 
 Application runs on:
