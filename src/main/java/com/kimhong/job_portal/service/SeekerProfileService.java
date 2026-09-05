@@ -92,7 +92,7 @@ public class SeekerProfileService {
                 .orElseThrow(()-> new ResourceNotFoundException("Please create profile first"));
 
         if(profile.getResumeUrl() != null && !profile.getResumeUrl().isBlank())
-            supabaseStorageService.deleteFile(profile.getResumeUrl(),"resumes");
+            supabaseStorageService.deleteResume(profile.getResumeUrl());
 
         String fileUrl = supabaseStorageService.uploadResume(file);
 
@@ -115,9 +115,6 @@ public class SeekerProfileService {
         return mapToSeekerProfileResponse(seekerProfileRepository.save(profile));
     }
 
-    // Admin talent pool search: students with inTalentPool = true,
-    // optionally filtered by skills (comma separated, case-insensitive).
-    // available=true additionally requires an uploaded resume.
     public List<SeekerProfileResponse> searchTalentPool(String skills, Boolean available){
         List<SeekerProfile> pool = seekerProfileRepository.findByInTalentPoolTrue();
 
@@ -143,8 +140,5 @@ public class SeekerProfileService {
                         || (profile.getResumeUrl() != null && !profile.getResumeUrl().isBlank()))
                 .map(this::mapToSeekerProfileResponse).toList();
     }
-
-
-
 
 }

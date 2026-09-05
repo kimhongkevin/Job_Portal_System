@@ -13,8 +13,6 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
-// Company profiles are fully managed by ADMIN — there is no
-// linked user account and no per-user ownership checks.
 @Service
 @RequiredArgsConstructor
 public class CompanyProfileService {
@@ -78,7 +76,6 @@ public class CompanyProfileService {
                 .facebookUrl(request.getFacebookUrl())
                 .linkedinUrl(request.getLinkedinUrl())
                 .foundedYear(request.getFoundedYear())
-                // Critical: CV emails are sent to this address when seekers apply
                 .contactEmail(request.getContactEmail())
                 .contactPersonName(request.getContactPersonName())
                 .build();
@@ -133,7 +130,7 @@ public class CompanyProfileService {
         CompanyProfile profile = companyProfileRepository.findById(id)
                 .orElseThrow(()-> new ResourceNotFoundException("Company not found."));
         if(profile.getCompanyLogoUrl() != null)
-            supabaseStorageService.deleteFile(profile.getCompanyLogoUrl(),"logos");
+            supabaseStorageService.deleteLogo(profile.getCompanyLogoUrl());
 
         String imageUrl = supabaseStorageService.uploadLogo(image);
 

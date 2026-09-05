@@ -151,7 +151,7 @@ public class CompanyProfileServiceTest {
         assertNotNull(response);
         assertEquals(newLogoUrl, response.getCompanyLogoUrl());
         verify(supabaseStorageService, times(1)).uploadLogo(mockImage);
-        verify(supabaseStorageService, never()).deleteFile(anyString(),anyString());
+        verify(supabaseStorageService, never()).deleteLogo(anyString());
         verify(companyProfileRepository, times(1)).save(any());
     }
 
@@ -176,7 +176,7 @@ public class CompanyProfileServiceTest {
         // Assert
         assertNotNull(response);
         assertEquals(newLogoUrl, response.getCompanyLogoUrl());
-        verify(supabaseStorageService, times(1)).deleteFile(oldLogoUrl,"logos"); // old logo deleted ✅
+        verify(supabaseStorageService, times(1)).deleteLogo(oldLogoUrl); // old logo deleted ✅
         verify(supabaseStorageService, times(1)).uploadLogo(mockImage);
     }
 

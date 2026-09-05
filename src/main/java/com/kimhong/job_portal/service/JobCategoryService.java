@@ -2,7 +2,6 @@ package com.kimhong.job_portal.service;
 
 import com.kimhong.job_portal.dto.JobCategoryRequest;
 import com.kimhong.job_portal.dto.JobCategoryResponse;
-import com.kimhong.job_portal.dto.JobPostingResponse;
 import com.kimhong.job_portal.entity.JobCategory;
 import com.kimhong.job_portal.exception.DuplicateResourceException;
 import com.kimhong.job_portal.exception.ResourceNotFoundException;

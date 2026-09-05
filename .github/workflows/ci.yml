@@ -20,8 +20,8 @@ jobs:
           java-version: '21'
           distribution: 'temurin'
 
-      - name: Run tests
-        run: mvn test
+      - name: Run Tests
+        run: ./mvnw test -Dspring.profiles.active=test
 
       - name: Build
         run: mvn clean package -DskipTests
